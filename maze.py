@@ -119,7 +119,7 @@ class Maze:
 			y0 += 1
 			offset += 1
 
-	def overlay(self, img, (bx1, by1, bx2, by2)):
+	def overlay(self, img, (bx1, by1, bx2, by2), border_size):
 		(_, _, orig_width, orig_height) = img.getbbox()
 
 		x1 = int(bx1 * orig_width)
@@ -148,7 +148,7 @@ class Maze:
 
 				x0 = xoff + (x * size)
 				y0 = yoff + (y * size)
-				u = d = l = r = 2
+				u = d = l = r = border_size
 
 				if self.maze_map.get((x - 1, y), CONNECTED) != WALL: l = 0
 				if self.maze_map.get((x + 1, y), CONNECTED) != WALL: r = 0
@@ -172,8 +172,8 @@ class Maze:
 					img.paste(white, (x0 + l, y0, x0 + size - r, orig_height))
 
 				if value in (START, FINISH):
-					x0 += (size / 2) - (CHAR_WIDTH / 2)
-					y0 += (size / 2) - (CHAR_HEIGHT / 2)
+					x0 += (size - CHAR_WIDTH) / 2
+					y0 += (size - CHAR_HEIGHT) / 2
 					self.draw_char(img, '\x1a', (x0, y0), 0xff)
 
 	def substitute_1x1(self, xy, before, after):

@@ -7,7 +7,8 @@ m = None
 page_number = 0
 fd = None
 
-def output(background, rows = 21, columns = 41, cropping = (0.0, 0.0, 1.0, 1.0), maze_box = (0.0, 0.5, 1.0, 1.0), seed = None):
+def output(background, rows = 21, columns = 41, crop = (0.0, 0.0, 1.0, 1.0),
+				border_size = 1, maze_box = (0.0, 0.5, 1.0, 1.0), seed = None):
 	global m, fd, page_number
 
 	page_number += 1
@@ -18,7 +19,7 @@ def output(background, rows = 21, columns = 41, cropping = (0.0, 0.0, 1.0, 1.0),
 	img = Image.open(background)
 	(_, _, orig_width, orig_height) = img.getbbox()
 
-	(bx1, by1, bx2, by2) = cropping
+	(bx1, by1, bx2, by2) = crop
 	x1 = int(bx1 * orig_width)
 	y1 = int(by1 * orig_height)
 	x2 = int(bx2 * orig_width)
@@ -26,13 +27,13 @@ def output(background, rows = 21, columns = 41, cropping = (0.0, 0.0, 1.0, 1.0),
 	img = img.crop((x1, y1, x2, y2))
 
 	m = Maze(rows, columns, seed)
-	m.overlay(img, maze_box)
+	m.overlay(img, maze_box, border_size)
 	img.save("page%u.png" % page_number)
 
 	(_, _, width, height) = img.getbbox()
 	img_ratio = float(width) / height
-	paper_width = (29.7 - 2.0 - 2.0) 
-	paper_height = (21.0 - 2.0 - 4.0 - 1.0)
+	paper_width = (29.7 - 1.0 - 1.0)
+	paper_height = (21.0 - 1.0 - 3.0)
 	paper_ratio = paper_width / paper_height
 	if img_ratio > paper_ratio:
 		# img is too wide, white bars will appear at bottom and top
@@ -42,10 +43,9 @@ def output(background, rows = 21, columns = 41, cropping = (0.0, 0.0, 1.0, 1.0),
 		size = r"height=%1.2fcm" % paper_height
 
 	fd.write("\n")
-	fd.write(r"\centering\includegraphics[%s]{page%u.png}" % (size, page_number))
-	fd.write(r"\newline\vspace{0.2cm}")
-	fd.write(r"{\tt\small\centering make\_maze(rows = %u, columns = %u, seed = %u)}" % (m.rows, m.columns, m.seed))
-	fd.write(r"\newpage")
+	fd.write(r"\begin{figure}[p]\centering\includegraphics[%s]{page%u.png}" % (size, page_number))
+	fd.write(r"\caption{make\_maze(rows = %u, columns = %u, seed = %u)}" % (m.rows, m.columns, m.seed))
+	fd.write(r"\end{figure}")
 
 def main():
 	global m, fd, page_number
@@ -54,15 +54,17 @@ def main():
 \documentclass[12pt]{book}
 \usepackage[pdftex,dvips]{graphicx}
 \usepackage{times} 
-\usepackage[paperwidth=29.7cm,paperheight=21cm,inner=2.0cm,outer=2.0cm,top=4.0cm,bottom=2.0cm]{geometry}
+\usepackage{color} 
+\usepackage[paperwidth=29.7cm,paperheight=21cm,inner=1.0cm,outer=1.0cm,top=3.0cm,bottom=1.0cm]{geometry}
+\usepackage[labelformat=empty]{caption}
 \begin{document}
-\begin{center}
-\pagenumbering{roman}
 \pagestyle{empty}
+\pagenumbering{gobble}
+\title{Book of Mazes}
+\maketitle
 """)
 	book()
 	fd.write(r"""
-\end{center}
 \end{document}
 """)
 	fd.close()
@@ -73,7 +75,8 @@ def main():
 def book():
 	global m, fd, page_number
 
-	output("Ja7TP76P.jpeg")
+	output("Ja7TP76P.jpeg", crop = (0, 0, 1, 0.5))
+	output("Ja7TP76P.jpeg", crop = (0, 0, 1, 0.5))
 	return
 
 	# intro mazes
