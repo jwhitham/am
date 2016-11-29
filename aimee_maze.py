@@ -29,23 +29,19 @@ def make_maze(rows, columns, seed):
 		for x in range(2, columns - 1, 2):
 			maze_map[x, y] = UNCONNECTED
 
-	# Pick player start point (left side)
+	# Pick start point (left side)
 	y = r.randrange(2, rows - 1, 2)
-	maze_map[1, y] = START
 	maze_map[0, y] = CONNECTED
+	maze_map[1, y] = START
+	maze_map[2, y] = CONNECTED
+	todo.append((2, y))
 
-	# Pick player finish point (right side)
+	# Pick finish point (right side)
 	x = columns - 2
 	y = r.randrange(2, rows - 1, 2)
 	maze_map[x, y] = FINISH 
 	x += 1
 	maze_map[x, y] = CONNECTED
-
-	# Choose centre of the maze
-	x = r.randrange(2, columns - 1, 2)
-	y = r.randrange(2, rows - 1, 2)
-	maze_map[x, y] = CONNECTED
-	todo.append((x, y))
 
 	# Repeatedly remove walls to make the maze
 	while len(todo) > 0:
