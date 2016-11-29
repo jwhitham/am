@@ -10,12 +10,20 @@ fd = None
 def output(background, rows = 21, columns = 41, crop = (0.0, 0.0, 1.0, 1.0),
 				border_size = 1, maze_box = (0.0, 0.0, 1.0, 1.0), seed = None,
 				portrait = False):
-	global m, fd, page_number
+	global m, fd, page_number, easy
 
 	page_number += 1
 
 	if seed == None:
 		seed = page_number
+	if easy:
+		f = 0.5
+		rows = max(int(rows * f) | 1, 11)
+		columns = max(int(columns * f) | 1, 11)
+		if rows > columns:
+			columns = min(columns, 21)
+		else:
+			rows = min(rows, 21)
 
 	print ("page %u image %s: load" % (page_number, background))
 	img = Image.open("images/" + background)
@@ -40,6 +48,10 @@ def output(background, rows = 21, columns = 41, crop = (0.0, 0.0, 1.0, 1.0),
 		print ("rotate")
 		img = img.rotate(270)
 
+	#print ("resize")
+	#(_, _, width, height) = img.getbbox()
+	#img = img.resize((width / 10, height / 10))
+
 	print ("save image")
 	img.save("output/page%u.png" % page_number)
 
@@ -56,12 +68,13 @@ def output(background, rows = 21, columns = 41, crop = (0.0, 0.0, 1.0, 1.0),
 		size = r"height=%1.2fcm" % paper_height
 
 	fd.write("\n")
-	fd.write(r"\begin{figure}[p]\centering\includegraphics[%s]{page%u.png}" % (size, page_number))
+	fd.write(r"\begin{figure}[htp]\centering\includegraphics[%s]{page%u.png}" % (size, page_number))
 	fd.write(r"\caption{make\_maze(rows = %u, columns = %u, seed = %u)}" % (m.rows, m.columns, m.seed))
 	fd.write(r"\end{figure}")
+	fd.write("\n")
 
 def main():
-	global m, fd, page_number
+	global m, fd, page_number, easy
 	fd = open("output/book.tex", "wt")
 	fd.write(r"""
 \documentclass[12pt]{book}
@@ -77,6 +90,14 @@ def main():
 \title{Book of Mazes}
 \maketitle
 """)
+	easy = True
+	book()
+	
+	fd.write(r"\section{How to make a maze}")
+	fd.write(r"words words")
+	fd.write(r"\newpage")
+
+	easy = False
 	book()
 	fd.write(r"""
 \end{document}
@@ -107,25 +128,28 @@ def main():
 # Kristoff-and-Sven-in-Frozen-Movie-HD-Wallpapers.jpg
 
 def book():
-	output("91686-frozen-elsa.jpg", rows = 21, columns = 21, maze_box = (0.0, 0.4, 1.0, 1.0), crop = (0.3, 0.0, 0.7, 1.0), portrait = True)
-	output("62266-frozen-elsa-and-anna-on-mountains.jpg")
-	output("Kristoff-and-Sven-in-Frozen-Movie-HD-Wallpapers.jpg", maze_box = (0.0, 0.0, 0.5, 1.0), columns = 31, rows = 31)
-	output("Ja7TP76P.jpeg", columns = 31, rows = 31, crop = (0.2, 0.0, 0.8, 1.0), portrait = True, maze_box = (0.0, 0.4, 1.0, 1.0))
-	output("Frozen-Wallpaper-olaf-and-sven-37883401-2880-1800.jpg", maze_box = (0.0, 0.35, 1.0, 1.0), columns = 121, rows = 41)
-	output("Frozen-Movie-Winter_Arendelle-HD-Wallpaper1.jpg")
-	output("frozen.jpg", maze_box = (0.0, 0.3, 1.0, 1.0))
-	output("Frozen-image-frozen-36065993-2560-1600.jpg")
-	output("Frozen-frozen-34532690-1600-900.jpg", rows = 31, columns = 51, maze_box = (0.0, 0.0, 1.0, 0.5), crop = (0.35, 0.0, 1.0, 1.0))
-	output("Disney_Frozen_Concept_Art_01.jpg", rows = 31, columns = 71, maze_box = (0.0, 0.0, 1.0, 0.8), crop = (0.1, 0.0, 0.9, 1.0))
-	output("frozen-fever-poster.jpg", crop = (0.0, 0.25, 1.0, 0.9), rows = 31, columns = 51, maze_box = (0.0, 0.3, 1.0, 1.0))
-	output("91686-frozen-elsa.jpg", rows = 21, columns = 21, maze_box = (0.0, 0.0, 0.5, 1.0), crop = (0.0, 0.0, 0.9, 1.0))
+	output("91686-frozen-elsa.jpg", rows = 41, columns = 45, maze_box = (0.0, 0.4, 1.0, 1.0), crop = (0.3, 0.0, 0.7, 1.0), portrait = True)
+	output("62266-frozen-elsa-and-anna-on-mountains.jpg", rows = 41, columns = 85)
+	output("Kristoff-and-Sven-in-Frozen-Movie-HD-Wallpapers.jpg", maze_box = (0.0, 0.0, 0.5, 1.0), columns = 41, rows = 51)
+	output("Ja7TP76P.jpeg", columns = 51, rows = 51, crop = (0.2, 0.0, 0.8, 1.0), portrait = True, maze_box = (0.0, 0.4, 1.0, 1.0))
+	output("Frozen-Wallpaper-olaf-and-sven-37883401-2880-1800.jpg", maze_box = (0.0, 0.35, 1.0, 1.0), columns = 141, rows = 41, border_size = 3)
+
+	output("Frozen-Movie-Winter_Arendelle-HD-Wallpaper1.jpg", rows = 51, columns = 85)
+	output("frozen.jpg", maze_box = (0.0, 0.3, 1.0, 1.0), rows = 41, columns = 71)
+	output("Frozen-image-frozen-36065993-2560-1600.jpg", rows = 81, columns = 121)
+	output("Frozen-frozen-34532690-1600-900.jpg", rows = 51, columns = 101, maze_box = (0.0, 0.0, 1.0, 0.7), crop = (0.35, 0.0, 1.0, 1.0))
+	output("Disney_Frozen_Concept_Art_01.jpg", rows = 43, columns = 111, maze_box = (0.0, 0.0, 1.0, 0.8), crop = (0.1, 0.0, 0.9, 1.0))
+
+	output("frozen-fever-poster.jpg", crop = (0.0, 0.25, 1.0, 0.9), rows = 41, columns = 65, maze_box = (0.0, 0.3, 1.0, 1.0))
+	output("91686-frozen-elsa.jpg", rows = 61, columns = 47, maze_box = (0.0, 0.0, 0.5, 1.0), crop = (0.0, 0.0, 0.9, 1.0))
 	output("frozen-fever-1.jpg", crop = (0.2, 0.0, 1.0, 1.0), rows = 51, columns = 51, maze_box = (0.5, 0.0, 1.0, 1.0))
-	output("frozen_elsa_snow_queen_palace-wide.jpg", rows = 31, columns = 71, maze_box = (0.0, 0.0, 1.0, 0.7))
-	output("Frozen-Elsa.jpg", rows = 41, columns = 41, maze_box = (0.0, 0.4, 1.0, 1.0), portrait = True)
-	output("frozen_2013_movie-wide.jpg", rows = 31, columns = 71, maze_box = (0.1, 0.4, 1.0, 1.0))
+	output("frozen_elsa_snow_queen_palace-wide.jpg", rows = 51, columns = 111, maze_box = (0.0, 0.0, 1.0, 0.7))
+	output("Frozen-Elsa.jpg", rows = 51, columns = 51, maze_box = (0.0, 0.4, 1.0, 1.0), portrait = True)
+
+	output("frozen_2013_movie-wide.jpg", rows = 41, columns = 111, maze_box = (0.0, 0.4, 1.0, 1.0))
 	output("frozen1.jpg", rows = 51, columns = 51, maze_box = (0.0, 0.0, 0.7, 1.0))
 	output("disney-frozen_elsa-wide.jpg", rows = 31, columns = 61, maze_box = (0.0, 0.4, 1.0, 1.0), crop = (0.2, 0.0, 1.0, 1.0))
-	output("bestmoviewalls_Frozen_16_2560x1600.jpg", rows = 41, columns = 61)
+	output("bestmoviewalls_Frozen_16_2560x1600.jpg", rows = 61, columns = 91, border_size = 3)
 
 
 
