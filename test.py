@@ -2,8 +2,9 @@
 from maze import Maze
 
 if __name__ == "__main__":
-	m = Maze(11, 11, 1)
+	m = Maze(31, 31, 1)
 	m.print_maze()
-	i = m.to_img()
+	m.block_drawing(0xfa)
+	i = m.to_img(1)
 	i.save("test.bmp")
 

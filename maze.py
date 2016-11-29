@@ -4,6 +4,25 @@ from aimee_maze import CONNECTED, START, WALL, FINISH
 from PIL import Image
 
 FLAGGED = ':'
+PAGE_409_TABLE = {
+	# Box drawing characters
+	"wasd" : [250, 250, 250, 250],
+	"wasD" : [196, 205, 205, 196],
+	"waSd" : [179, 186, 179, 186],
+	"waSD" : [218, 201, 213, 214],
+	"wAsd" : [196, 205, 205, 196],
+	"wAsD" : [196, 205, 205, 196],
+	"wASd" : [191, 187, 184, 183],
+	"wASD" : [194, 203, 209, 210],
+	"Wasd" : [179, 186, 179, 186],
+	"WasD" : [192, 200, 212, 211],
+	"WaSd" : [179, 186, 179, 186],
+	"WaSD" : [195, 204, 198, 199],
+	"WAsd" : [217, 188, 190, 189],
+	"WAsD" : [193, 202, 207, 208],
+	"WASd" : [180, 185, 181, 182],
+	"WASD" : [197, 206, 216, 215],
+}
 
 class Maze:
 	def __init__(self, rows, columns, seed):
@@ -27,10 +46,40 @@ class Maze:
 		self.substitute_3x3(self.start, FLAGGED, WALL)
 		self.substitute_3x3(self.finish, FLAGGED, WALL)
 
+	def box_drawing(self, number):
+		assert 0 <= number <= 3
+		maze_map = dict()
+		rows = self.rows
+		columns = self.columns
+		for y in range(rows):
+			for x in range(columns):
+				if self.maze_map[x, y] == WALL:
+					key = ["w", "a", "s", "d"]
+					if self.maze_map.get((x - 1, y), WALL) == WALL: key[1] = "A"
+					if self.maze_map.get((x + 1, y), WALL) == WALL: key[3] = "D"
+					if self.maze_map.get((x, y - 1), WALL) == WALL: key[0] = "W"
+					if self.maze_map.get((x, y + 1), WALL) == WALL: key[2] = "S"
+					key = ''.join(key)
+
+					maze_map[x, y] = chr(PAGE_409_TABLE[key][number])
+				else:
+					maze_map[x, y] = self.maze_map[x, y]
+	
+		self.maze_map = maze_map
+
+	def block_drawing(self, value):
+		value = chr(value)
+		rows = self.rows
+		columns = self.columns
+		for y in range(rows):
+			for x in range(columns):
+				if self.maze_map[x, y] == WALL:
+					self.maze_map[x, y] = value
+
 	def print_maze(self):
 		aimee_maze.print_maze(self.rows, self.columns, self.maze_map)
 
-	def to_img(self):
+	def to_img(self, flip):
 		char_width = 8
 		char_height = 8
 
@@ -43,19 +92,19 @@ class Maze:
 		for y in range(rows):
 			for x in range(columns):
 				value = maze_map[x, y]
+				inv = 0
+				if value in (START, FINISH):
+					value = chr(26)
+				elif value == CONNECTED:
+					pass
+				elif flip:
+					inv = 0xff
 
-				if value == aimee_maze.WALL:
-					gfx = 1 + ((x + y) % 2)
-				elif value in (aimee_maze.START, aimee_maze.FINISH):
-					gfx = ord("Z") - 64
-				else:
-					gfx = 0
-
-				offset = gfx * char_height
+				offset = ord(value) * char_height
 				y0 = y * char_height
 
 				for y1 in range(8):
-					font = ord(font_data[offset])
+					font = ord(font_data[offset]) ^ inv
 					x0 = x * char_width
 					for x1 in range(8):
 						if (font & 128) == 0:
