@@ -1,6 +1,6 @@
 
 from maze import Maze
-import subprocess
+import subprocess, os
 from PIL import Image
 
 m = None
@@ -16,7 +16,7 @@ def output(background, rows = 21, columns = 41, crop = (0.0, 0.0, 1.0, 1.0),
 	if seed == None:
 		seed = page_number
 
-	img = Image.open(background)
+	img = Image.open("images/" + background)
 	(_, _, orig_width, orig_height) = img.getbbox()
 
 	(bx1, by1, bx2, by2) = crop
@@ -28,7 +28,7 @@ def output(background, rows = 21, columns = 41, crop = (0.0, 0.0, 1.0, 1.0),
 
 	m = Maze(rows, columns, seed)
 	m.overlay(img, maze_box, border_size)
-	img.save("page%u.png" % page_number)
+	img.save("output/page%u.png" % page_number)
 
 	(_, _, width, height) = img.getbbox()
 	img_ratio = float(width) / height
@@ -49,7 +49,7 @@ def output(background, rows = 21, columns = 41, crop = (0.0, 0.0, 1.0, 1.0),
 
 def main():
 	global m, fd, page_number
-	fd = open("book.tex", "wt")
+	fd = open("output/book.tex", "wt")
 	fd.write(r"""
 \documentclass[12pt]{book}
 \usepackage[pdftex,dvips]{graphicx}
@@ -68,6 +68,7 @@ def main():
 \end{document}
 """)
 	fd.close()
+	os.chdir("output")
 	rc = subprocess.call(["pdflatex", "book.tex"])
 	assert rc == 0
 
