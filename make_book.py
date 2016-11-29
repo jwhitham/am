@@ -3,14 +3,14 @@ from maze import Maze
 import subprocess, os
 from PIL import Image
 
-m = None
 page_number = 0
 fd = None
+RESIZE = False
 
 def output(background, rows = 21, columns = 41, crop = (0.0, 0.0, 1.0, 1.0),
 				border_size = 1, maze_box = (0.0, 0.0, 1.0, 1.0), seed = None,
 				portrait = False):
-	global m, fd, page_number, easy
+	global fd, page_number, easy
 
 	page_number += 1
 
@@ -22,8 +22,10 @@ def output(background, rows = 21, columns = 41, crop = (0.0, 0.0, 1.0, 1.0),
 		columns = max(int(columns * f) | 1, 11)
 		if rows > columns:
 			columns = min(columns, 21)
+			rows = min(rows, 41)
 		else:
 			rows = min(rows, 21)
+			columns = min(columns, 41)
 
 	print ("page %u image %s: load" % (page_number, background))
 	img = Image.open("images/" + background)
@@ -37,20 +39,29 @@ def output(background, rows = 21, columns = 41, crop = (0.0, 0.0, 1.0, 1.0),
 	y2 = int(by2 * orig_height)
 	print ("crop")
 	img = img.crop((x1, y1, x2, y2))
+	m = None
 
-	print ("make maze")
-	m = Maze(rows, columns, seed)
+	if maze_box != None:
+		print ("make maze")
+		possible = []
+		for i in range(20):
+			m = Maze(rows, columns, seed + (i * 100))
+			possible.append(m)
 
-	print ("print maze")
-	m.overlay(img, maze_box, border_size)
+		possible.sort(key = lambda m: (m.number_of_choices, m.number_of_steps, m.seed))
+		m = possible[-2]
+
+		print ("print maze, seed %u" % m.seed)
+		m.overlay(img, maze_box, border_size)
 
 	if portrait:
 		print ("rotate")
 		img = img.rotate(270)
 
-	#print ("resize")
-	#(_, _, width, height) = img.getbbox()
-	#img = img.resize((width / 10, height / 10))
+	if RESIZE:
+		print ("resize")
+		(_, _, width, height) = img.getbbox()
+		img = img.resize((width / 10, height / 10))
 
 	print ("save image")
 	img.save("output/page%u.png" % page_number)
@@ -69,12 +80,15 @@ def output(background, rows = 21, columns = 41, crop = (0.0, 0.0, 1.0, 1.0),
 
 	fd.write("\n")
 	fd.write(r"\begin{figure}[htp]\centering\includegraphics[%s]{page%u.png}" % (size, page_number))
-	fd.write(r"\caption{make\_maze(rows = %u, columns = %u, seed = %u)}" % (m.rows, m.columns, m.seed))
+
+	if m != None:
+		fd.write(r"\caption{make\_maze(rows = %u, columns = %u, seed = %u)}" % (m.rows, m.columns, m.seed))
+
 	fd.write(r"\end{figure}")
 	fd.write("\n")
 
 def main():
-	global m, fd, page_number, easy
+	global fd, page_number, easy
 	fd = open("output/book.tex", "wt")
 	fd.write(r"""
 \documentclass[12pt]{book}
@@ -87,15 +101,16 @@ def main():
 \begin{document}
 \pagestyle{empty}
 \pagenumbering{gobble}
-\title{Book of Mazes}
-\maketitle
 """)
 	easy = True
 	book()
 	
-	fd.write(r"\section{How to make a maze}")
-	fd.write(r"words words")
-	fd.write(r"\newpage")
+	fd.write(r"""
+\section*{PLACEHOLDER}
+
+page intentionally left blank
+\newpage
+""")
 
 	easy = False
 	book()

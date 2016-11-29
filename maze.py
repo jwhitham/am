@@ -3,7 +3,8 @@ import aimee_maze
 from aimee_maze import CONNECTED, START, WALL, FINISH
 from PIL import Image
 
-FLAGGED = ':'
+FLAGGED1 = ':'
+FLAGGED2 = 'p'
 PAGE_409_TABLE = {
 	# Box drawing characters
 	"wasd" : [250, 250, 250, 250],
@@ -36,8 +37,8 @@ class Maze:
 		self.test_maze_find_start_finish()
 
 	def remove_surrounding(self):	
-		self.substitute_3x3(self.start, WALL, FLAGGED)
-		self.substitute_3x3(self.finish, WALL, FLAGGED)
+		self.substitute_3x3(self.start, WALL, FLAGGED1)
+		self.substitute_3x3(self.finish, WALL, FLAGGED1)
 
 		for y in range(rows):
 			self.substitute_1x1((0, y), WALL, CONNECTED)
@@ -47,8 +48,8 @@ class Maze:
 			self.substitute_1x1((x, 0), WALL, CONNECTED)
 			self.substitute_1x1((x, rows - 1), WALL, CONNECTED)
 
-		self.substitute_3x3(self.start, FLAGGED, WALL)
-		self.substitute_3x3(self.finish, FLAGGED, WALL)
+		self.substitute_3x3(self.start, FLAGGED1, WALL)
+		self.substitute_3x3(self.finish, FLAGGED1, WALL)
 
 	def box_drawing(self, number):
 		assert 0 <= number <= 3
@@ -249,18 +250,40 @@ class Maze:
 			y -= 1
 
 			if found:
-				maze_map[x, y] = '%d' % (number_of_steps % 10)
+				maze_map[x, y] = FLAGGED2 # on the path
 			else:
-				maze_map[x, y] = FLAGGED
+				maze_map[x, y] = FLAGGED1 # not on the path
 
 			return found
 		
 		(x, y) = start	
 		recurse(x, y, 0)
-		maze_map[x, y] = START
 		assert ok[0] > 0, "did not reach exit"
 
 		self.start = start
 		self.finish = finish 
 		self.number_of_steps = ok[0]
+
+		self.number_of_choices = 0
+		(x, y) = start
+		while (x, y) != finish:
+			choice = False
+			assert maze_map[x, y] != CONNECTED
+			assert maze_map[x, y] != WALL
+			assert maze_map[x, y] != FLAGGED1
+			assert maze_map[x, y] == FLAGGED2 # on path
+			maze_map[x, y] = CONNECTED # visited
+
+			if maze_map[x - 1, y] == FLAGGED1: choice = True
+			elif maze_map[x + 1, y] == FLAGGED1: choice = True
+			elif maze_map[x, y - 1] == FLAGGED1: choice = True
+			elif maze_map[x, y + 1] == FLAGGED1: choice = True
+
+			if maze_map[x - 1, y] == FLAGGED2: x -= 1
+			elif maze_map[x + 1, y] == FLAGGED2: x += 1
+			elif maze_map[x, y - 1] == FLAGGED2: y -= 1
+			elif maze_map[x, y + 1] == FLAGGED2: y += 1
+
+			if choice:
+				self.number_of_choices += 1
 
