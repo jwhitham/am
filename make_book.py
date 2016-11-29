@@ -1,39 +1,64 @@
 
 from maze import Maze
 import subprocess
+from PIL import Image
 
 m = None
 page_number = 0
 fd = None
 
-def output(inv):
+def output(background, rows = 21, columns = 41, cropping = (0.0, 0.0, 1.0, 1.0), maze_box = (0.0, 0.5, 1.0, 1.0), seed = None):
 	global m, fd, page_number
 
 	page_number += 1
-	m.to_img(inv).save("page%u.png" % page_number)
-	width = 1.0 * m.columns
-	if width > 18.0:
-		width = 18.0
+
+	if seed == None:
+		seed = page_number
+
+	img = Image.open(background)
+	(_, _, orig_width, orig_height) = img.getbbox()
+
+	(bx1, by1, bx2, by2) = cropping
+	x1 = int(bx1 * orig_width)
+	y1 = int(by1 * orig_height)
+	x2 = int(bx2 * orig_width)
+	y2 = int(by2 * orig_height)
+	img = img.crop((x1, y1, x2, y2))
+
+	m = Maze(rows, columns, seed)
+	m.overlay(img, maze_box)
+	img.save("page%u.png" % page_number)
+
+	(_, _, width, height) = img.getbbox()
+	img_ratio = float(width) / height
+	paper_width = (29.7 - 2.0 - 2.0) 
+	paper_height = (21.0 - 2.0 - 4.0 - 1.0)
+	paper_ratio = paper_width / paper_height
+	if img_ratio > paper_ratio:
+		# img is too wide, white bars will appear at bottom and top
+		size = r"width=%1.2fcm" % paper_width
+	else:
+		# img is too tall, white bars will appear at bottom and top
+		size = r"height=%1.2fcm" % paper_height
 
 	fd.write("\n")
-	fd.write(r"\includegraphics[width=%1.1fcm]{page%u.png}" % (width, page_number))
-	fd.write(r"\newline")
-	fd.write(r"~~")
-	fd.write(r"\newline")
-	fd.write(r"~~")
-	fd.write(r"\vspace{1cm}")
-	fd.write(r"%u rows and %u columns (seed = %u)" % (m.rows, m.columns, m.seed))
+	fd.write(r"\centering\includegraphics[%s]{page%u.png}" % (size, page_number))
+	fd.write(r"\newline\vspace{0.2cm}")
+	fd.write(r"{\tt\small\centering make\_maze(rows = %u, columns = %u, seed = %u)}" % (m.rows, m.columns, m.seed))
 	fd.write(r"\newpage")
 
 def main():
 	global m, fd, page_number
 	fd = open("book.tex", "wt")
 	fd.write(r"""
-\documentclass[11pt,a4paper]{book}
+\documentclass[12pt]{book}
 \usepackage[pdftex,dvips]{graphicx}
 \usepackage{times} 
+\usepackage[paperwidth=29.7cm,paperheight=21cm,inner=2.0cm,outer=2.0cm,top=4.0cm,bottom=2.0cm]{geometry}
 \begin{document}
 \begin{center}
+\pagenumbering{roman}
+\pagestyle{empty}
 """)
 	book()
 	fd.write(r"""
@@ -48,10 +73,13 @@ def main():
 def book():
 	global m, fd, page_number
 
+	output("Ja7TP76P.jpeg")
+	return
+
 	# intro mazes
-	m = Maze(11, 11, 900)
-	m.block_drawing(0xdb)
+	m = Maze(15, 31, 802)
 	output(0)
+	return
 
 	m = Maze(11, 13, 901)
 	m.block_drawing(0x01)
@@ -60,7 +88,6 @@ def book():
 	m = Maze(13, 11, 902)
 	m.block_drawing(0xf9)
 	output(1)
-	return
 
 	m = Maze(11, 13, 903)
 	m.block_drawing(0x07)

@@ -23,6 +23,9 @@ PAGE_409_TABLE = {
 	"WASd" : [180, 185, 181, 182],
 	"WASD" : [197, 206, 216, 215],
 }
+FONT_DATA = open("cp437-8x8", "rb").read()
+CHAR_WIDTH = 8
+CHAR_HEIGHT = 8
 
 class Maze:
 	def __init__(self, rows, columns, seed):
@@ -32,7 +35,7 @@ class Maze:
 		self.maze_map = aimee_maze.make_maze(rows, columns, seed)
 		self.test_maze_find_start_finish()
 
-		# no surrounding wall
+	def remove_surrounding(self):	
 		self.substitute_3x3(self.start, WALL, FLAGGED)
 		self.substitute_3x3(self.finish, WALL, FLAGGED)
 
@@ -81,14 +84,10 @@ class Maze:
 		aimee_maze.print_maze(self.rows, self.columns, self.maze_map)
 
 	def to_img(self, flip):
-		char_width = 8
-		char_height = 8
-
 		maze_map = self.maze_map
 		rows = self.rows
 		columns = self.columns
-		img = Image.new("1", (char_width * columns, char_height * rows), 1)
-		font_data = open("cp437-8x8", "rb").read()
+		img = Image.new("1", (CHAR_WIDTH * columns, CHAR_HEIGHT * rows), 1)
 
 		for y in range(rows):
 			for x in range(columns):
@@ -101,21 +100,81 @@ class Maze:
 				elif flip:
 					inv = 0x00
 
-				offset = ord(value) * char_height
-				y0 = y * char_height
-
-				for y1 in range(8):
-					font = ord(font_data[offset]) ^ inv
-					x0 = x * char_width
-					for x1 in range(8):
-						if (font & 128) == 0:
-							img.putpixel((x0, y0), 0)
-						x0 += 1
-						font = font << 1
-					y0 += 1
-					offset += 1
+				x0 = x * CHAR_WIDTH
+				y0 = y * CHAR_HEIGHT
+				self.draw_char(img, value, (x0, y0), inv)
 
 		return img
+
+	def draw_char(self, img, value, (x0, y0), inv):
+		offset = ord(value) * CHAR_HEIGHT
+		for y1 in range(8):
+			font = ord(FONT_DATA[offset]) ^ inv
+			for x1 in range(8):
+				if (font & 128) == 0:
+					img.putpixel((x0, y0), 0)
+				x0 += 1
+				font = font << 1
+			x0 -= CHAR_WIDTH
+			y0 += 1
+			offset += 1
+
+	def overlay(self, img, (bx1, by1, bx2, by2)):
+		(_, _, orig_width, orig_height) = img.getbbox()
+
+		x1 = int(bx1 * orig_width)
+		x2 = int(bx2 * orig_width)
+		y1 = int(by1 * orig_height)
+		y2 = int(by2 * orig_height)
+
+		width = x2 - x1
+		height = y2 - y1
+		xsize = width / self.columns
+		ysize = height / (self.rows - 1)
+		size = min(xsize, ysize)
+		size = int((size * 9) / 10)
+		xsize = ysize = size
+		xoff = x1 + int((width / 2) - ((xsize * self.columns) / 2))
+		yoff = y1 + int((height / 2) - ((ysize * (self.rows - 1)) / 2))
+
+		white = (255, 255, 255)
+		black = (0, 0, 0)
+
+		for y in range(self.rows - 1):
+			for x in range(self.columns):
+				value = self.maze_map[x, y]
+				if value == WALL:
+					continue
+
+				x0 = xoff + (x * size)
+				y0 = yoff + (y * size)
+				u = d = l = r = 2
+
+				if self.maze_map.get((x - 1, y), CONNECTED) != WALL: l = 0
+				if self.maze_map.get((x + 1, y), CONNECTED) != WALL: r = 0
+				if self.maze_map.get((x, y - 1), CONNECTED) != WALL: u = 0
+				if self.maze_map.get((x, y + 1), CONNECTED) != WALL: d = 0
+
+				img.paste(black, (x0, y0, x0 + size, y0 + size))
+				img.paste(white, (x0 + l, y0 + u, x0 + size - r, y0 + size - d))
+
+				if x == 0:
+					img.paste(black, (0, y0, x0, y0 + size))
+					img.paste(white, (0, y0 + u, x0, y0 + size - d))
+				if x == self.columns - 1:
+					img.paste(black, (x0, y0, orig_width, y0 + size))
+					img.paste(white, (x0, y0 + u, orig_width, y0 + size - d))
+				if y == 0:
+					img.paste(black, (x0, 0, x0 + size, y0))
+					img.paste(white, (x0 + l, 0, x0 + size - r, y0))
+				if y == self.rows - 2:
+					img.paste(black, (x0, y0, x0 + size, orig_height))
+					img.paste(white, (x0 + l, y0, x0 + size - r, orig_height))
+
+				if value in (START, FINISH):
+					x0 += (size / 2) - (CHAR_WIDTH / 2)
+					y0 += (size / 2) - (CHAR_HEIGHT / 2)
+					self.draw_char(img, '\x1a', (x0, y0), 0xff)
 
 	def substitute_1x1(self, xy, before, after):
 		if self.maze_map[xy] == before:
