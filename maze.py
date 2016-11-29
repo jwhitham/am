@@ -103,21 +103,25 @@ class Maze:
 
 				x0 = x * CHAR_WIDTH
 				y0 = y * CHAR_HEIGHT
-				self.draw_char(img, value, (x0, y0), inv)
+				self.draw_char(img, value, (x0, y0, x0 + CHAR_WIDTH, y0 + CHAR_HEIGHT), inv)
 
 		return img
 
-	def draw_char(self, img, value, (x0, y0), inv):
+	def draw_char(self, img, value, (x0, y0, x1, y1), inv):
+		pwidth = (x1 - x0) / CHAR_WIDTH
+		pheight = (y1 - y0) / CHAR_HEIGHT
+		x0 += ((x1 - x0) - (pwidth * CHAR_WIDTH)) / 2
+		y0 += ((y1 - y0) - (pheight * CHAR_HEIGHT)) / 2
 		offset = ord(value) * CHAR_HEIGHT
-		for y1 in range(8):
+		for y1 in range(CHAR_HEIGHT):
 			font = ord(FONT_DATA[offset]) ^ inv
-			for x1 in range(8):
+			for x1 in range(CHAR_WIDTH):
 				if (font & 128) == 0:
-					img.putpixel((x0, y0), 0)
-				x0 += 1
+					img.paste((0, 0, 0), (x0, y0, x0 + pwidth, y0 + pheight), 0)
+				x0 += pwidth
 				font = font << 1
-			x0 -= CHAR_WIDTH
-			y0 += 1
+			x0 -= CHAR_WIDTH * pwidth
+			y0 += pheight
 			offset += 1
 
 	def overlay(self, img, (bx1, by1, bx2, by2), border_size):
@@ -173,9 +177,7 @@ class Maze:
 					img.paste(white, (x0 + l, y0, x0 + size - r, orig_height))
 
 				if value in (START, FINISH):
-					x0 += (size - CHAR_WIDTH) / 2
-					y0 += (size - CHAR_HEIGHT) / 2
-					self.draw_char(img, '\x1a', (x0, y0), 0xff)
+					self.draw_char(img, '\x1a', (x0, y0, x0 + size, y0 + size), 0xff)
 
 	def substitute_1x1(self, xy, before, after):
 		if self.maze_map[xy] == before:
