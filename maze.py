@@ -28,6 +28,7 @@ class Maze:
 	def __init__(self, rows, columns, seed):
 		self.rows = rows
 		self.columns = columns
+		self.seed = seed
 		self.maze_map = aimee_maze.make_maze(rows, columns, seed)
 		self.test_maze_find_start_finish()
 
@@ -92,13 +93,13 @@ class Maze:
 		for y in range(rows):
 			for x in range(columns):
 				value = maze_map[x, y]
-				inv = 0
+				inv = 0xff
 				if value in (START, FINISH):
 					value = chr(26)
 				elif value == CONNECTED:
 					pass
 				elif flip:
-					inv = 0xff
+					inv = 0x00
 
 				offset = ord(value) * char_height
 				y0 = y * char_height
