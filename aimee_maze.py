@@ -9,15 +9,15 @@ CONNECTED = ' '
 
 def make_maze(rows, columns, seed):
 	# Input requirements
-	assert rows > 3,			"must have more than 3 rows"
-	assert columns > 3,			"must have more than 3 columns"
+	assert rows > 5,			"must have more than 3 rows"
+	assert columns > 5,			"must have more than 3 columns"
 	assert (rows % 2) == 1,		"must have an odd number of rows"
 	assert (columns % 2) == 1,	"must have an odd number of columns"
 
 	# Begin creating the maze
 	r = random.Random(seed)
 	maze_map = dict()
-	todo = []
+	list_of_walls = []
 
 	# Fill the maze area with walls
 	for y in range(rows):
@@ -31,10 +31,59 @@ def make_maze(rows, columns, seed):
 
 	# Pick start point (left side)
 	y = r.randrange(2, rows - 1, 2)
+	start = (1, y)
 	maze_map[0, y] = CONNECTED
-	maze_map[1, y] = START
-	maze_map[2, y] = CONNECTED
-	todo.append((2, y))
+	list_of_walls.append(start)
+
+	# Repeatedly remove walls to make the maze
+	while len(list_of_walls) > 0:
+		# find some wall within the maze
+		(x, y) = list_of_walls.pop(r.randrange(0, len(list_of_walls)))
+
+		if (y % 2) == 0:
+			# Wall has spaces to the left and right
+			assert (x % 2) == 1
+			if maze_map[x - 1, y] == UNCONNECTED:
+				# unconnected space to the left
+				assert maze_map[x + 1, y] == CONNECTED
+				maze_map[x, y] = CONNECTED
+				maze_map[x - 1, y] = CONNECTED
+				list_of_walls.append((x - 1, y - 1))
+				list_of_walls.append((x - 1, y + 1))
+				list_of_walls.append((x - 2, y))
+			elif maze_map[x + 1, y] == UNCONNECTED:
+				# unconnected space to the right
+				assert maze_map[x - 1, y] == CONNECTED
+				maze_map[x, y] = CONNECTED
+				maze_map[x + 1, y] = CONNECTED
+				list_of_walls.append((x + 1, y - 1))
+				list_of_walls.append((x + 1, y + 1))
+				list_of_walls.append((x + 2, y))
+			else:
+				# both spaces already connected, do nothing
+				pass
+		else:
+			# Wall has spaces above and below
+			assert (x % 2) == 0
+			if maze_map[x, y - 1] == UNCONNECTED:
+				# unconnected space above
+				assert maze_map[x, y + 1] == CONNECTED
+				maze_map[x, y] = CONNECTED
+				maze_map[x, y - 1] = CONNECTED
+				list_of_walls.append((x - 1, y - 1))
+				list_of_walls.append((x + 1, y - 1))
+				list_of_walls.append((x, y - 2))
+			elif maze_map[x, y + 1] == UNCONNECTED:
+				# unconnected space below
+				assert maze_map[x, y - 1] == CONNECTED
+				maze_map[x, y] = CONNECTED
+				maze_map[x, y + 1] = CONNECTED
+				list_of_walls.append((x - 1, y + 1))
+				list_of_walls.append((x + 1, y + 1))
+				list_of_walls.append((x, y + 2))
+			else:
+				# both spaces already connected, do nothing
+				pass
 
 	# Pick finish point (right side)
 	x = columns - 2
@@ -43,39 +92,9 @@ def make_maze(rows, columns, seed):
 	x += 1
 	maze_map[x, y] = CONNECTED
 
-	# Repeatedly remove walls to make the maze
-	while len(todo) > 0:
-		# find some connected place within the maze
-		(x, y) = todo.pop(r.randrange(0, len(todo)))
-
-		# look at the walls around it, can any be removed?
-		walls = []
-		if maze_map[x - 2, y] == UNCONNECTED:
-			walls.append((- 1, 0))
-		if maze_map[x + 2, y] == UNCONNECTED:
-			walls.append((+ 1, 0))
-		if maze_map[x, y - 2] == UNCONNECTED:
-			walls.append((0, - 1))
-		if maze_map[x, y + 2] == UNCONNECTED:
-			walls.append((0, + 1))
-
-		if len(walls) > 1:
-			# revisit (x, y) as walls remain
-			todo.append((x, y))
-
-		if len(walls) > 0:
-			# pick a wall
-			(dx, dy) = r.choice(walls)
-			# remove that wall
-			x += dx
-			y += dy
-			maze_map[x, y] = CONNECTED
-			# connect up new space
-			x += dx
-			y += dy
-			maze_map[x, y] = CONNECTED
-			# new space joins todo list
-			todo.append((x, y))
+	# Mark start point
+	(x, y) = start
+	maze_map[x, y] = START
 
 	# Maze is finished
 	return maze_map

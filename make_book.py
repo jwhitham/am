@@ -124,7 +124,6 @@ def main():
 	fd.write(r"""
 \documentclass[12pt]{book}
 \usepackage[pdftex,dvips]{graphicx}
-\usepackage{times} 
 \usepackage{color} 
 \usepackage{morefloats} 
 \usepackage[paperwidth=29.7cm,paperheight=21cm,inner=1.0cm,outer=1.0cm,top=3.0cm,bottom=1.0cm]{geometry}

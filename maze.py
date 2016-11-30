@@ -175,3 +175,6 @@ class Maze:
 			if choice:
 				self.number_of_choices += 1
 
+if __name__ == "__main__":
+	Maze(25, 49, 2).print_maze()
+
