@@ -17,15 +17,15 @@ def output(background, rows = 21, columns = 41, crop = (0.0, 0.0, 1.0, 1.0),
 	if seed == None:
 		seed = page_number
 	if easy:
-		f = 0.5
+		f = 0.45
 		rows = max(int(rows * f) | 1, 11)
 		columns = max(int(columns * f) | 1, 11)
 		if rows > columns:
 			columns = min(columns, 21)
-			rows = min(rows, 41)
+			rows = min(rows, 35)
 		else:
 			rows = min(rows, 21)
-			columns = min(columns, 41)
+			columns = min(columns, 35)
 
 	print ("page %u image %s: load" % (page_number, background))
 	img = Image.open("images/" + background)
@@ -40,6 +40,37 @@ def output(background, rows = 21, columns = 41, crop = (0.0, 0.0, 1.0, 1.0),
 	print ("crop")
 	img = img.crop((x1, y1, x2, y2))
 	m = None
+
+	print ("search for best size")
+	xinc = yinc = False
+	while True:
+		(_, _, width, height) = img.getbbox()
+		(bx1, by1, bx2, by2) = maze_box
+		x1 = int(bx1 * width)
+		x2 = int(bx2 * width)
+		y1 = int(by1 * height)
+		y2 = int(by2 * height)
+		width = x2 - x1
+		height = y2 - y1
+		xsize = width / columns
+		ysize = height / rows
+		size = min(xsize, ysize)
+		xsize = ysize = size
+		xgap = width - (xsize * columns)
+		ygap = height - (ysize * rows)
+		if (xgap <= size) and (ygap <= size):
+			break
+
+		if xgap > ygap:
+			if yinc:
+				break
+			columns += 2
+			xinc = True
+		else:
+			if xinc:
+				break
+			rows += 2
+			yinc = True
 
 	if maze_box != None:
 		print ("make maze")
@@ -61,7 +92,7 @@ def output(background, rows = 21, columns = 41, crop = (0.0, 0.0, 1.0, 1.0),
 	if RESIZE:
 		print ("resize")
 		(_, _, width, height) = img.getbbox()
-		img = img.resize((width / 10, height / 10))
+		img = img.resize((width / 5, height / 5))
 
 	print ("save image")
 	img.save("output/page%u.png" % page_number)
