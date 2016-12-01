@@ -9,8 +9,8 @@ CONNECTED = ' '
 
 def make_maze(rows, columns, seed):
 	# Input requirements
-	assert rows > 5,			"must have more than 3 rows"
-	assert columns > 5,			"must have more than 3 columns"
+	assert rows > 3,			"must have more than 3 rows"
+	assert columns > 3,			"must have more than 3 columns"
 	assert (rows % 2) == 1,		"must have an odd number of rows"
 	assert (columns % 2) == 1,	"must have an odd number of columns"
 
