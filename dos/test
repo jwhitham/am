@@ -1,0 +1,5 @@
+#!/bin/bash -xe
+nasm -o cga.com cga.asm
+#~/durden/dosbox-0.74/bin/dosbox -conf dosbox-0.74.conf test.bat
+dosbox -conf dosbox-0.74.conf test.bat
+
