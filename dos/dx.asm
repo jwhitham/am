@@ -19,17 +19,21 @@ start:
 	mov	ax, 0
 	int	0x10
 
+; Direction flag remains clear for whole program
+	cld
+
+fill_maze_area_with_walls:
 ;	# Fill the maze area with walls
 ;	for y in range(ROWS):
 ;		for x in range(COLUMNS):
 ;			maze_map[x, y] = WALL
 
-	cld
 	mov	di, maze_map
 	mov	cx, ROWS * COLUMNS
 	mov	al, WALL
 	rep stosb
 
+remove_spaces_between_walls:
 ;	# Remove spaces between walls
 ;	for y in range(2, ROWS - 1, 2):
 ;		for x in range(2, COLUMNS - 1, 2):
@@ -49,6 +53,17 @@ remove_spaces_for_x:
 
 	dec bl
 	jnz remove_spaces_for_y
+	ret
+
+
+
+pick_start_point:
+;	# Pick start point (left side)
+;	y = r.randrange(2, ROWS - 1, 2)
+;	start = (1, y)
+;	maze_map[0, y] = CONNECTED
+;	list_of_walls.append(start)
+	
 
 	call display_maze
 a:	hlt

@@ -1,5 +1,5 @@
 #!/bin/bash -xe
-nasm -o dx.com dx.asm
+nasm -o dx.com -l dx.lst dx.asm
 #~/durden/dosbox-0.74/bin/dosbox -conf dosbox-0.74.conf test.bat
 dosbox -conf dosbox-0.74.conf test.bat
 
