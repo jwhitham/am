@@ -1,5 +1,5 @@
 @echo off
-cga.com
+dx.com
 pause
 exit
 
