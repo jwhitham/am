@@ -1,5 +1,5 @@
-CPU X64
-BITS 64
+CPU 8086
+BITS 16 
 GLOBAL mwc1
 EXTERN z
 EXTERN w
@@ -33,7 +33,6 @@ w_no_carry:
 	add word	ax, [z]
 	mov word	[r + 2], ax
 	
-	mov long	eax, [r]
 	ret
 
 

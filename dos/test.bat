@@ -1,5 +1,5 @@
 @echo off
-dx.com
+m.com
 pause
 exit
 
