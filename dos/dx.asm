@@ -1,9 +1,4 @@
 
-ORG	0x100
-CPU 8086
-BITS 16
-
-
 WALL equ 'q' + (32 * 2)
 UNCONNECTED equ '.'
 START equ '>'
@@ -13,6 +8,10 @@ ROWS equ 27
 COLUMNS equ 41
 TEXT_ATTRIBUTE equ 12
 SCREEN_COLUMNS equ 40
+
+	cpu 8086
+	bits 16
+	org 0x100
 
 start:
 ; 40 column text mode
@@ -53,8 +52,6 @@ remove_spaces_for_x:
 
 	dec bl
 	jnz remove_spaces_for_y
-	ret
-
 
 
 pick_start_point:
@@ -63,9 +60,23 @@ pick_start_point:
 ;	start = (1, y)
 ;	maze_map[0, y] = CONNECTED
 ;	list_of_walls.append(start)
-	
 
-	call display_maze
+	mov di, maze_map
+	mov cx, ROWS * COLUMNS
+fill:
+	push di
+	push cx
+		call display_maze
+	pop cx
+	pop di
+
+	mov ax, 26
+	call random
+	add ax, 65
+	mov [di], al
+	inc di
+	loop fill
+
 a:	hlt
 	jmp	a	
 	
@@ -157,6 +168,8 @@ a:	hlt
 ;
 
 
+; Copy the current maze to the screen
+
 display_maze:
 ;	# Display maze
 	push es
@@ -189,10 +202,51 @@ display_for_x:							; copy row Y
 	pop es
 	ret
 
+; Generate a pseudo random number
+; When called, AX = top end of range
+; Returns number 0 <= AX < top end of range
+
+random:
+	mov	bx, ax
+
+	; random_state_z = (36969 * (random_state_z & 0xffff)) + (random_state_z >> 16) 
+	mov word	ax, 36969
+	mul word	[random_state_z]		; DX:AX = 36969 * (random_state_z & 0xffff) 
+	add word 	ax, [random_state_z + 2]	; add random_state_z >> 16 to AX 
+	mov word	[random_state_z], ax		; store low word of random_state_z 
+	jnc		z_no_carry
+	inc word	dx		; carry into high word of random_state_z 
+z_no_carry:
+	mov word	[random_state_z + 2], dx	; store high word of random_state_z 
+
+	; random_state_w = (18000 * (random_state_w & 0xffff)) + (random_state_w >> 16) 
+	mov word	ax, 18000
+	mul word	[random_state_w]		; DX:AX = 18000 * (random_state_w & 0xffff) 
+	add word 	ax, [random_state_w + 2]	; add random_state_w >> 16 to AX 
+	mov word	[random_state_w], ax		; store low word of random_state_w 
+	jnc		w_no_carry
+	inc word	dx		; carry into high word of random_state_w 
+w_no_carry:
+	mov word	[random_state_w + 2], dx	; store high word of random_state_w 
+
+	; get a 32-bit pseudo random number in DX:AX
+	mov word	ax, [random_state_w]	; already done
+	mov word	dx, [random_state_w + 2] ; already done
+	add word	dx, [random_state_z]
+
+	; DX:AX divide by BX
+	div bx
+	; DX is remainder
+	mov ax, dx
+	ret
+
+random_state_z:
+	dd			362436069
+random_state_w:
+	dd			521288629
 
 maze_map:
-;	resb	ROWS * COLUMNS
-;	incbin	"d.bin"
+	resb	ROWS * COLUMNS
 
 
 

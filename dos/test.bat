@@ -1,5 +1,5 @@
 @echo off
-m.com
+debug dx.com
 pause
 exit
 
