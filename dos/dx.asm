@@ -1,25 +1,45 @@
 
 WALL equ 'q' + (32 * 2)
 UNCONNECTED equ '.'
-START equ '>'
-FINISH equ '<'
 CONNECTED equ ' '
 ROWS equ 27
 COLUMNS equ 41
 TEXT_ATTRIBUTE equ 12
 SCREEN_COLUMNS equ 40
+SCREEN_ROWS equ 25
+MAZE_ATTRIBUTE equ 0x0f
+PLAYER_ATTRIBUTE equ 0x1e
+SEEN_ATTRIBUTE equ 0x1e
+PLAYER equ 5
+BASE_VIDEO_MEMORY equ 0xb800
 
+	section .text
 	cpu 8086
 	bits 16
 	org 0x100
 
 start:
 ; 40 column text mode
-	mov	ax, 0
+	xor ax, ax
 	int	0x10
+
+; init pseudo random number generator from RTC
+	xor ax, ax
+	int 0x1a
+	xor [random_state_z], cx
+	xor [random_state_w], dx
+
+; hide the cursor
+	mov ah, 1
+	xor cx, 0x2000
+	int 0x10
 
 ; Direction flag remains clear for whole program
 	cld
+
+; FS points to video RAM
+	mov dx, BASE_VIDEO_MEMORY
+	mov fs, dx
 
 fill_maze_area_with_walls:
 ;	; Fill the maze area with walls
@@ -70,7 +90,7 @@ pick_start_point:
 	mov byte [di - 1], CONNECTED
 
 ;	start = (1, y)
-	mov [maze_start], ax
+	mov [player_location], ax
 
 ;	list_of_walls.append(start)
 	mov word [maze_list_length], 0
@@ -129,6 +149,7 @@ remove_next:
 ;			; Wall has spaces to the left and right
 ;			assert (x % 2) == 1
 			test dl, 1
+assert_fail_1:
 			jz assert_fail_1
 
 ;			if maze_map[x - 1, y] == UNCONNECTED:
@@ -137,6 +158,7 @@ remove_next:
 ;				; unconnected space to the left
 ;				assert maze_map[x + 1, y] == CONNECTED
 				cmp [di + 1], bh
+assert_fail_2:
 				jnz assert_fail_2
 
 ;				maze_map[x, y] = CONNECTED
@@ -161,6 +183,7 @@ check_right:
 ;				; unconnected space to the right
 ;				assert maze_map[x - 1, y] == CONNECTED
 				cmp [di - 1], bh
+assert_fail_3:
 				jnz assert_fail_3
 
 ;				maze_map[x, y] = CONNECTED
@@ -186,6 +209,7 @@ y_is_odd:
 ;			; Wall has spaces above and below
 ;			assert (x % 2) == 0
 			test dl, 1
+assert_fail_4:
 			jnz assert_fail_4
 
 ;			if maze_map[x, y - 1] == UNCONNECTED:
@@ -194,6 +218,7 @@ y_is_odd:
 ;				; unconnected space above
 ;				assert maze_map[x, y + 1] == CONNECTED
 				cmp [di + COLUMNS], bh 
+assert_fail_5:
 				jnz assert_fail_5
 
 ;				maze_map[x, y] = CONNECTED
@@ -217,6 +242,7 @@ check_below:
 ;				; unconnected space below
 ;				assert maze_map[x, y - 1] == CONNECTED
 				cmp [di - COLUMNS], bh 
+assert_fail_6:
 				jnz assert_fail_6
 
 ;				maze_map[x, y] = CONNECTED
@@ -239,14 +265,32 @@ check_below:
 
 removed_all:
 
-	call display_maze
 ;
 ;	; Pick finish point (right side)
 ;	x = COLUMNS - 2
 ;	y = r.randrange(2, ROWS - 1, 2)
+
+	mov bx, (ROWS / 2) - 1
+	call random
+	; random number in DX
+	mov ax, COLUMNS * 2
+	mul dx
+	add ax, (COLUMNS * 2) + COLUMNS - 2 ; location (COLUMNS - 1, y)
+	add ax, maze_map
+	mov di, ax
+
 ;	maze_map[x, y] = FINISH 
+	mov byte [di], CONNECTED
 ;	x += 1
 ;	maze_map[x, y] = CONNECTED
+	mov byte [di + 1], CONNECTED
+
+	; Prevent player escaping to the left
+	mov si, [player_location]
+	mov al, WALL
+	mov [si - 1], al
+
+	call display_maze
 ;
 ;	; Mark start point
 ;	(x, y) = start
@@ -255,21 +299,105 @@ removed_all:
 ;	; Maze is finished
 ;	return maze_map
 ;
+;	It's time to play!
 
-a:
-	jmp	a	
-	
+solving_maze:
+		; get X and Y for player
+		mov si, [player_location]
+		mov ax, si
+		xor dx, dx
+		sub ax, maze_map
+
+		; DX:AX = location
+		mov bx, COLUMNS
+		div bx
+		; DX = X = location % COLUMNS
+		; AX = Y = location / COLUMNS
+
+		; player has won if X >= last column
+		cmp dx, COLUMNS - 1
+		jge win_game
+
+		; draw on screen
+		push dx
+			mov dx, SCREEN_COLUMNS * 2
+			dec ax
+			mul dx
+			; AX = beginning of row
+		pop dx
+		dec dx
+		add ax, dx
+		add ax, dx ; AX = location of player on screen
+		mov di, ax
+		mov ax, (PLAYER_ATTRIBUTE << 8) | PLAYER ; draw player on screen
+		mov [fs:di], ax
+
+invalid_move:
+		; wait for a move - blocking read from keyboard 
+			mov si, [player_location]
+			mov ah, 0
+			int 0x16
+			or al, 0x20 ; lower case
+
+			cmp al, 'j'
+			jz go_down
+			cmp ah, 0x50
+			jz go_down
+
+			cmp al, 'k'
+			jz go_up
+			cmp ah, 0x48
+			jz go_up
+
+			cmp al, 'h'
+			jz go_left
+			cmp ah, 0x4b
+			jz go_left
+
+			cmp al, 'l'
+			jz go_right
+			cmp ah, 0x4d
+			jz go_right
+
+			cmp ah, 1
+			jz press_escape
+			jmp invalid_move
+
+go_down:
+		add si, COLUMNS
+		jmp check_move
+go_up:
+		add si, -COLUMNS
+		jmp check_move
+go_left:
+		add si, -1
+		jmp check_move
+go_right:
+		add si, +1
+
+check_move:
+		mov al, [si]
+		cmp al, CONNECTED
+		jnz invalid_move
+
+		; move was valid - undraw the player
+		mov ax, (SEEN_ATTRIBUTE << 8)
+		mov [fs:di], ax
+
+		; move the player
+		mov [player_location], si
+
+		jmp solving_maze
 
 ; Copy the current maze to the screen
 
 display_maze:
 ;	; Display maze
-	push es
-	mov dx, 0xb800
-	mov es, dx
+	mov dx, BASE_VIDEO_MEMORY
+
 	mov	si, maze_map + COLUMNS + 1		; maze map row 1 col 1
 	mov di, 0							; screen row 0 col 0
-	mov ah, 0x0f						; attribute
+	mov ah, MAZE_ATTRIBUTE					; attribute
 	mov bl, ROWS - 1
 
 display_for_y:
@@ -277,7 +405,7 @@ display_for_y:
 
 display_for_x:							; copy row Y
 		mov al, [si]					; load maze element
-		mov [es:di], ax					; copy maze element and attribute to screen
+		mov [fs:di], ax					; copy maze element and attribute to screen
 		inc di							; next screen loc
 		inc di
 		inc si							; next maze loc
@@ -291,7 +419,6 @@ display_for_x:							; copy row Y
 	dec bl
 	jnz display_for_y
 
-	pop es
 	ret
 
 ; Generate a pseudo random number
@@ -348,42 +475,47 @@ add_to_maze_list:
 	inc		ax
 	mov		[maze_list_length], ax
 	ret
-	ret
-	ret
-	ret
-	ret
 
-assert_fail_1:
-	int 3
-assert_fail_2:
-	int 3
-assert_fail_3:
-	int 3
-assert_fail_4:
-	int 3
-assert_fail_5:
-	int 3
-assert_fail_6:
-	int 3
-	ret
+press_escape:
+	mov dx, msg_escape
+	jmp exit
+win_game:
+	mov dx, msg_you_win_the_game
 
+exit:
+; 80 column text mode
+	push dx
+		mov	ax, 3
+		int	0x10
+	pop dx
+; print message
+	mov ah, 0x09
+	int	0x21
+; back to DOS
+	mov ax, 0x4c00
+	int	0x21
 
-	align 8
+section .data
 random_state_z:
 	dd			362436069
 random_state_w:
 	dd			521288629
-maze_start:
+msg_you_win_the_game:
+	db		"You win!!"
+	db		13
+	db 		10
+msg_escape:
+	db		'$'
+
+section .bss
+
+player_location:
 	resb	2
 maze_list_length:
 	resb	2
-
-	align 8
 maze_map:
 	resb	ROWS * COLUMNS
-
-	align 8
 maze_list:
-	resb	ROWS * COLUMNS * 2
+	resb	(ROWS * COLUMNS) / 4
 
 
