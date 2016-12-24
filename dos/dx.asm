@@ -61,15 +61,30 @@ pick_start_point:
 ;	maze_map[0, y] = CONNECTED
 ;	list_of_walls.append(start)
 
-	mov di, maze_map
-	mov cx, ROWS * COLUMNS
-fill:
-	mov bx, 26
+	mov bx, (ROWS / 2) - 1
 	call random
-	add dx, 65
-	mov [di], dl
-	inc di
-	loop fill
+	mov ax, COLUMNS * 2
+	mul dx
+	add ax, (COLUMNS * 2) + 1
+	add ax, maze_map
+	mov [maze_start], ax
+	mov [maze_list], ax
+	mov word [maze_list_length], 1
+	mov di, ax
+	mov byte [di], CONNECTED
+
+
+;	; Repeatedly remove walls to make the maze
+;	while len(list_of_walls) > 0:
+repeatedly_remove:
+;		; find some wall within the maze
+;		(x, y) = list_of_walls.pop(r.randrange(0, len(list_of_walls)))
+
+		mov bx, [maze_list_length]
+		call random
+		add ax, ax
+		add ax, maze_list 		; AX = list entry address
+
 
 	push di
 	push cx
@@ -77,7 +92,7 @@ fill:
 	pop cx
 	pop di
 
-a:	hlt
+a:
 	jmp	a	
 	
 
@@ -243,9 +258,13 @@ random_state_z:
 	dd			362436069
 random_state_w:
 	dd			521288629
-
+maze_start:
+	resb	2
 maze_map:
 	resb	ROWS * COLUMNS
-
+maze_list_length:
+	resb	2
+maze_list:
+	resb	ROWS * COLUMNS * 2
 
 
