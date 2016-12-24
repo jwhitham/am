@@ -57,40 +57,194 @@ remove_spaces_for_x:
 pick_start_point:
 ;	; Pick start point (left side)
 ;	y = r.randrange(2, ROWS - 1, 2)
-;	start = (1, y)
-;	maze_map[0, y] = CONNECTED
-;	list_of_walls.append(start)
-
 	mov bx, (ROWS / 2) - 1
 	call random
+	; random number in DX
 	mov ax, COLUMNS * 2
 	mul dx
-	add ax, (COLUMNS * 2) + 1
+	add ax, (COLUMNS * 2) + 1 ; location (1, y)
 	add ax, maze_map
-	mov [maze_start], ax
-	mov [maze_list], ax
-	mov word [maze_list_length], 1
 	mov di, ax
-	mov byte [di], CONNECTED
+
+;	maze_map[0, y] = CONNECTED
+	mov byte [di - 1], CONNECTED
+
+;	start = (1, y)
+	mov [maze_start], ax
+
+;	list_of_walls.append(start)
+	mov word [maze_list_length], 0
+	call add_to_maze_list
 
 
 ;	; Repeatedly remove walls to make the maze
 ;	while len(list_of_walls) > 0:
-repeatedly_remove:
+remove_next:
+		call display_maze
+
+		; test if list is empty
+		mov bx, [maze_list_length]
+		cmp bx, 0
+		jz removed_all
+
 ;		; find some wall within the maze
 ;		(x, y) = list_of_walls.pop(r.randrange(0, len(list_of_walls)))
 
-		mov bx, [maze_list_length]
-		call random
+		int 3
+
+		push bx
+			call random
+			; random number in DX
+			add dx, dx
+			add dx, maze_list
+			mov di, dx 	 ; DI = chosen list entry address
+			mov cx, [di] ; CX = location of wall
+		pop ax
+
+		; move last element in list to empty space
+		; (if we picked the last element, this is still ok, though a waste of time)
+		dec ax
+		mov [maze_list_length], ax ; list gets shorter
 		add ax, ax
-		add ax, maze_list 		; AX = list entry address
+		add ax, maze_list
+		mov si, ax		; SI = final list entry location
+		mov ax, [si]	; moved last element back
+		mov [di], ax
 
+		; CX = location of wall. Turn this into X, Y
+		mov ax, cx
+		sub ax, maze_map
+		xor dx, dx
+		; DX:AX = location
+		mov bx, COLUMNS
+		div bx
+		; DX = X = location % COLUMNS
+		; AX = Y = location / COLUMNS
+		mov di, cx
+		; DI = CX = location of wall
+		mov bx, (CONNECTED << 8) | UNCONNECTED
+		; BH = CONNECTED
+		; BL = UNCONNECTED
 
-	push di
-	push cx
-		call display_maze
-	pop cx
-	pop di
+;		if (y % 2) == 0:
+		test al, 1
+		jnz y_is_odd
+;			; Wall has spaces to the left and right
+;			assert (x % 2) == 1
+			test dl, 1
+			jz assert_fail_1
+
+;			if maze_map[x - 1, y] == UNCONNECTED:
+			cmp [di - 1], bl
+			jnz check_right
+;				; unconnected space to the left
+;				assert maze_map[x + 1, y] == CONNECTED
+				cmp [di + 1], bh
+				jnz assert_fail_2
+
+;				maze_map[x, y] = CONNECTED
+				mov [di], bh
+;				maze_map[x - 1, y] = CONNECTED
+				mov [di - 1], bh
+;				list_of_walls.append((x - 1, y - 1))
+				add di, (- COLUMNS - 1)
+				call add_to_maze_list
+;				list_of_walls.append((x - 1, y + 1))
+				add di, COLUMNS * 2
+				call add_to_maze_list
+;				list_of_walls.append((x - 2, y))
+				add di, (- COLUMNS - 1)
+				call add_to_maze_list
+				jmp remove_next
+
+check_right:
+;			elif maze_map[x + 1, y] == UNCONNECTED:
+			cmp [di + 1], bl
+			jnz remove_next
+
+;				; unconnected space to the right
+;				assert maze_map[x - 1, y] == CONNECTED
+				cmp [di - 1], bh
+				jnz assert_fail_3
+
+;				maze_map[x, y] = CONNECTED
+				mov [di], bh
+;				maze_map[x + 1, y] = CONNECTED
+				mov [di + 1], bh
+;				list_of_walls.append((x + 1, y - 1))
+				add di, (+ 1 - COLUMNS)
+				call add_to_maze_list
+;				list_of_walls.append((x + 1, y + 1))
+				add di, COLUMNS * 2
+				call add_to_maze_list
+;				list_of_walls.append((x + 2, y))
+				add di, (+ 1 - COLUMNS)
+				call add_to_maze_list
+				jmp remove_next
+
+;			else:
+;				; both spaces already connected, do nothing
+;				pass
+;		else:
+
+y_is_odd:
+;			; Wall has spaces above and below
+;			assert (x % 2) == 0
+			test dl, 1
+			jnz assert_fail_4
+
+;			if maze_map[x, y - 1] == UNCONNECTED:
+			cmp [di - COLUMNS], bl
+			jnz check_below
+;				; unconnected space above
+;				assert maze_map[x, y + 1] == CONNECTED
+				cmp [di + COLUMNS], bh 
+				jnz assert_fail_5
+
+;				maze_map[x, y] = CONNECTED
+				mov [di], bh
+;				maze_map[x, y - 1] = CONNECTED
+				mov [di - COLUMNS], bh
+;				list_of_walls.append((x - 1, y - 1))
+				add di, (- 1 - COLUMNS)
+				call add_to_maze_list
+;				list_of_walls.append((x + 1, y - 1))
+				add di, 2
+				call add_to_maze_list
+;				list_of_walls.append((x, y - 2))
+				add di, (- 1 - COLUMNS)
+				call add_to_maze_list
+				jmp remove_next
+
+check_below:
+;			elif maze_map[x, y + 1] == UNCONNECTED:
+			cmp [di + COLUMNS], bl
+			jnz remove_next
+;				; unconnected space below
+;				assert maze_map[x, y - 1] == CONNECTED
+				cmp [di - COLUMNS], bh 
+				jnz assert_fail_6
+
+;				maze_map[x, y] = CONNECTED
+				mov [di], bh
+;				maze_map[x, y + 1] = CONNECTED
+				mov [di + COLUMNS], bh
+;				list_of_walls.append((x - 1, y + 1))
+				add di, (- 1 + COLUMNS)
+				call add_to_maze_list
+;				list_of_walls.append((x + 1, y + 1))
+				add di, 2
+				call add_to_maze_list
+;				list_of_walls.append((x, y + 2))
+				add di, (+ COLUMNS - 1)
+				call add_to_maze_list
+				jmp remove_next
+;			else:
+;				; both spaces already connected, do nothing
+;				pass
+;
+
+removed_all:
 
 a:
 	jmp	a	
@@ -254,16 +408,52 @@ w_no_carry:
 	; DX is remainder
 	ret
 
+; Add DI to maze list
+
+add_to_maze_list:
+	mov		ax, [maze_list_length]
+	mov		si, maze_list
+	add		si, ax
+	add		si, ax
+	mov		[si], di
+	inc		ax
+	mov		[maze_list_length], ax
+	ret
+	ret
+	ret
+	ret
+	ret
+
+assert_fail_1:
+	int 3
+assert_fail_2:
+	int 3
+assert_fail_3:
+	int 3
+assert_fail_4:
+	int 3
+assert_fail_5:
+	int 3
+assert_fail_6:
+	int 3
+	ret
+
+
+	align 8
 random_state_z:
 	dd			362436069
 random_state_w:
 	dd			521288629
 maze_start:
 	resb	2
-maze_map:
-	resb	ROWS * COLUMNS
 maze_list_length:
 	resb	2
+
+	align 8
+maze_map:
+	resb	ROWS * COLUMNS
+
+	align 8
 maze_list:
 	resb	ROWS * COLUMNS * 2
 
