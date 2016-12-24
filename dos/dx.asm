@@ -80,17 +80,14 @@ pick_start_point:
 ;	; Repeatedly remove walls to make the maze
 ;	while len(list_of_walls) > 0:
 remove_next:
-		call display_maze
 
 		; test if list is empty
 		mov bx, [maze_list_length]
-		cmp bx, 0
+		test bx, bx
 		jz removed_all
 
 ;		; find some wall within the maze
 ;		(x, y) = list_of_walls.pop(r.randrange(0, len(list_of_walls)))
-
-		int 3
 
 		push bx
 			call random
@@ -154,8 +151,7 @@ remove_next:
 				call add_to_maze_list
 ;				list_of_walls.append((x - 2, y))
 				add di, (- COLUMNS - 1)
-				call add_to_maze_list
-				jmp remove_next
+				jmp add_to_maze_list_remove_next
 
 check_right:
 ;			elif maze_map[x + 1, y] == UNCONNECTED:
@@ -179,8 +175,7 @@ check_right:
 				call add_to_maze_list
 ;				list_of_walls.append((x + 2, y))
 				add di, (+ 1 - COLUMNS)
-				call add_to_maze_list
-				jmp remove_next
+				jmp add_to_maze_list_remove_next
 
 ;			else:
 ;				; both spaces already connected, do nothing
@@ -213,8 +208,7 @@ y_is_odd:
 				call add_to_maze_list
 ;				list_of_walls.append((x, y - 2))
 				add di, (- 1 - COLUMNS)
-				call add_to_maze_list
-				jmp remove_next
+				jmp add_to_maze_list_remove_next
 
 check_below:
 ;			elif maze_map[x, y + 1] == UNCONNECTED:
@@ -237,8 +231,7 @@ check_below:
 				call add_to_maze_list
 ;				list_of_walls.append((x, y + 2))
 				add di, (+ COLUMNS - 1)
-				call add_to_maze_list
-				jmp remove_next
+				jmp add_to_maze_list_remove_next
 ;			else:
 ;				; both spaces already connected, do nothing
 ;				pass
@@ -246,80 +239,7 @@ check_below:
 
 removed_all:
 
-a:
-	jmp	a	
-	
-
-;	; Begin creating the maze
-;	r = random.Random(seed)
-;	maze_map = dict()
-;	list_of_walls = []
-;
-;	; Fill the maze area with walls
-;	for y in range(ROWS):
-;		for x in range(COLUMNS):
-;			maze_map[x, y] = WALL
-;
-;	; Remove spaces between walls
-;	for y in range(2, ROWS - 1, 2):
-;		for x in range(2, COLUMNS - 1, 2):
-;			maze_map[x, y] = UNCONNECTED
-;
-;	; Pick start point (left side)
-;	y = r.randrange(2, ROWS - 1, 2)
-;	start = (1, y)
-;	maze_map[0, y] = CONNECTED
-;	list_of_walls.append(start)
-;
-;	; Repeatedly remove walls to make the maze
-;	while len(list_of_walls) > 0:
-;		; find some wall within the maze
-;		(x, y) = list_of_walls.pop(r.randrange(0, len(list_of_walls)))
-;
-;		if (y % 2) == 0:
-;			; Wall has spaces to the left and right
-;			assert (x % 2) == 1
-;			if maze_map[x - 1, y] == UNCONNECTED:
-;				; unconnected space to the left
-;				assert maze_map[x + 1, y] == CONNECTED
-;				maze_map[x, y] = CONNECTED
-;				maze_map[x - 1, y] = CONNECTED
-;				list_of_walls.append((x - 1, y - 1))
-;				list_of_walls.append((x - 1, y + 1))
-;				list_of_walls.append((x - 2, y))
-;			elif maze_map[x + 1, y] == UNCONNECTED:
-;				; unconnected space to the right
-;				assert maze_map[x - 1, y] == CONNECTED
-;				maze_map[x, y] = CONNECTED
-;				maze_map[x + 1, y] = CONNECTED
-;				list_of_walls.append((x + 1, y - 1))
-;				list_of_walls.append((x + 1, y + 1))
-;				list_of_walls.append((x + 2, y))
-;			else:
-;				; both spaces already connected, do nothing
-;				pass
-;		else:
-;			; Wall has spaces above and below
-;			assert (x % 2) == 0
-;			if maze_map[x, y - 1] == UNCONNECTED:
-;				; unconnected space above
-;				assert maze_map[x, y + 1] == CONNECTED
-;				maze_map[x, y] = CONNECTED
-;				maze_map[x, y - 1] = CONNECTED
-;				list_of_walls.append((x - 1, y - 1))
-;				list_of_walls.append((x + 1, y - 1))
-;				list_of_walls.append((x, y - 2))
-;			elif maze_map[x, y + 1] == UNCONNECTED:
-;				; unconnected space below
-;				assert maze_map[x, y - 1] == CONNECTED
-;				maze_map[x, y] = CONNECTED
-;				maze_map[x, y + 1] = CONNECTED
-;				list_of_walls.append((x - 1, y + 1))
-;				list_of_walls.append((x + 1, y + 1))
-;				list_of_walls.append((x, y + 2))
-;			else:
-;				; both spaces already connected, do nothing
-;				pass
+	call display_maze
 ;
 ;	; Pick finish point (right side)
 ;	x = COLUMNS - 2
@@ -336,6 +256,9 @@ a:
 ;	return maze_map
 ;
 
+a:
+	jmp	a	
+	
 
 ; Copy the current maze to the screen
 
@@ -407,6 +330,12 @@ w_no_carry:
 	div bx
 	; DX is remainder
 	ret
+
+; Add DI to maze list then jump to remove_next
+
+add_to_maze_list_remove_next:
+	mov		ax, remove_next
+	push 	ax
 
 ; Add DI to maze list
 
