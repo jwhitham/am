@@ -1,5 +1,5 @@
 @echo off
-debug dx.com
+debug maze.com
 pause
 exit
 
