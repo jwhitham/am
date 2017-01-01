@@ -13,30 +13,42 @@ def main():
 	s = pygame.display.set_mode((HALF_WIDTH * 2, HALF_HEIGHT * 2))
 	clock = pygame.time.Clock()
 
-	m = maze.Maze(21, 21, 1)
+	original_maze = maze.Maze(21, 21, 1)
 	player_x = player_y = 0
 
-	for maze_row in range(m.rows):
-		for maze_column in range(m.columns):
-			if m.maze_map.get((maze_column, maze_row), 0) == maze.START:
+	for maze_row in range(original_maze.rows):
+		for maze_column in range(original_maze.columns):
+			if original_maze.maze_map.get((maze_column, maze_row), 0) == maze.START:
 				player_x = maze_column + 0.5
 				player_y = maze_row + 0.5
 				break
 
-	#for maze_row in range(2, m.rows - 2):
-	#	for maze_column in range(2, m.columns - 2):
-	#		m.maze_map[(maze_column, maze_row)] = maze.CONNECTED
+	#for maze_row in range(2, original_maze.rows - 2):
+	#	for maze_column in range(2, original_maze.columns - 2):
+	#		original_maze.maze_map[(maze_column, maze_row)] = maze.CONNECTED
 
-	texture_width = m.columns
-	texture_height = m.rows
+	texture_width = original_maze.columns
+	texture_height = original_maze.rows
 	key = None
+	camera_angle = 0.0
 
 	while True:
 		s.fill((0, 0, 0))
+
+		# vector along the line that the player faces
+		camera_vector_x = math.cos(camera_angle)
+		camera_vector_y = math.sin(camera_angle)
+
+		# normal to the camera vector (projection plane for view)
+		plane_vector_x = -camera_vector_y
+		plane_vector_y = camera_vector_x
+
+
 		for screen_x in range(-HALF_WIDTH, HALF_WIDTH, 1):
-			#ray_angle = (screen_x * math.pi * 0.25) / HALF_WIDTH
-			ray_vector_x = 1.0
-			ray_vector_y = (0.99 * screen_x) / HALF_WIDTH
+
+			# vector for this screen X (the ray being cast)
+			ray_vector_x = camera_vector_x + ((plane_vector_x * screen_x) / HALF_WIDTH)
+			ray_vector_y = camera_vector_y + ((plane_vector_y * screen_x) / HALF_WIDTH)
 			viewer_x = player_x
 			viewer_y = player_y
 
@@ -46,7 +58,7 @@ def main():
 			maze_x = int(math.floor(viewer_x))
 			maze_y = int(math.floor(viewer_y))
 
-			while (maze_x < m.columns) and (abs(maze_y) < m.columns):
+			while (maze_x < original_maze.columns) and (abs(maze_y) < original_maze.columns):
 				sub_x = viewer_x - maze_x
 				sub_y = viewer_y - maze_y
 				assert 0 <= sub_x <= 1.0
@@ -73,7 +85,7 @@ def main():
 					viewer_x = i2x
 					viewer_y = i2y
 					assert maze_x == int(math.floor(viewer_x))
-					assert maze_y == int(math.floor(viewer_y))
+					#assert maze_y == int(math.floor(viewer_y))
 
 					texture_x = int(math.floor(i2y * texture_width))
 					texture_x %= texture_width
@@ -100,9 +112,28 @@ def main():
 
 
 
-				if (m.maze_map.get((maze_x, maze_y), 0) == maze.WALL):
+				if (original_maze.maze_map.get((maze_x, maze_y), 0) == maze.WALL):
 					# reached wall
+
+					# There is a plane with the point (viewer_x, viewer_y) on it.
+					# It is normal to the camera_vector plane. Find point where the
+					# two intersect  
+
 					dist = viewer_x - player_x
+					xa = camera_vector_x
+					ya = camera_vector_y
+					xb = plane_vector_x
+					yb = plane_vector_y
+					a = (xa * yb) - (xb * ya)
+					if a != 0.0:
+						b = (xa * player_y) + (viewer_x * ya) - (player_x * ya) - (xa * viewer_y)
+						tb = b / a
+						intersect_x = viewer_x + (xb * tb)
+						intersect_y = viewer_y + (yb * tb)
+						tmp = (intersect_x - player_x) ** 2
+						tmp += (intersect_y - player_y) ** 2
+						dist = math.sqrt(tmp)
+
 					height = (2 * (HALF_HEIGHT - 1)) / dist
 					h = maze_x + maze_y
 					h = (h % 7) + 1
@@ -120,14 +151,14 @@ def main():
 					maze_x = int(math.floor(player_x))
 					maze_y = int(math.floor(player_y))
 					save_pos = (maze_x, maze_y)
-					save_val = m.maze_map[save_pos]
-					m.maze_map[save_pos] = '*'
+					save_val = original_maze.maze_map[save_pos]
+					original_maze.maze_map[save_pos] = '*'
 
 					tmp_y0 = tmp_y1 = HALF_HEIGHT - (height / 2)
 					tmp_x = screen_x + HALF_WIDTH
 					for texture_y in range(texture_height):
 						tmp_y2 = (((texture_y + 1) * height) / texture_height) + tmp_y0
-						v = m.maze_map.get((texture_x, texture_y), 0)
+						v = original_maze.maze_map.get((texture_x, texture_y), 0)
 						if v == maze.WALL:
 							h = ((texture_x + texture_y) % 9)
 							r = g = b = 127 + (h * 16)
@@ -144,21 +175,21 @@ def main():
 						pygame.draw.line(s, (r, g, b), (tmp_x, tmp_y1), (tmp_x, tmp_y2))
 						tmp_y1 = tmp_y2
 
-					m.maze_map[save_pos] = save_val
+					original_maze.maze_map[save_pos] = save_val
 					break
 
 		if SHOW_MAP:
-			for x in range(m.columns):
+			for x in range(original_maze.columns):
 				pygame.draw.line(s, (255, 255, 255),
 					(int(x * MU) + HALF_WIDTH, 0),
 					(int(x * MU) + HALF_WIDTH, HALF_HEIGHT * 2))
-			for y in range(m.rows):
+			for y in range(original_maze.rows):
 				pygame.draw.line(s, (255, 255, 255),
 					(0, int(y * MU) + HALF_HEIGHT),
 					(HALF_WIDTH * 2, int(y * MU) + HALF_HEIGHT))
-			for y in range(m.rows):
-				for x in range(m.columns):
-					if (m.maze_map.get((x, y), 0) == maze.WALL):
+			for y in range(original_maze.rows):
+				for x in range(original_maze.columns):
+					if (original_maze.maze_map.get((x, y), 0) == maze.WALL):
 						pygame.draw.rect(s, (100, 100, 100),
 							(int(x * MU) + HALF_WIDTH, int(y * MU) + HALF_HEIGHT, MU, MU))
 
@@ -178,13 +209,19 @@ def main():
 			e = pygame.event.poll()
 
 		if key == K_LEFT:
-			new_player_y -= 0.1
+			camera_angle -= 0.1
 		if key == K_RIGHT:
-			new_player_y += 0.1
+			camera_angle += 0.1
 		if key == K_DOWN:
-			new_player_x -= 0.1
+			new_player_x -= 0.1 * camera_vector_x
+			new_player_y -= 0.1 * camera_vector_y
 		if key == K_UP:
-			new_player_x += 0.1
+			new_player_x += 0.1 * camera_vector_x
+			new_player_y += 0.1 * camera_vector_y
+		if key == K_z:
+			camera_angle -= 0.1
+		if key == K_x:
+			camera_angle += 0.1
 		if key == K_ESCAPE:
 			break
 
@@ -194,7 +231,7 @@ def main():
 			maze_x = int(math.floor(new_player_x - (x * 0.1)))
 			for y in range(-1, 2, 2):
 				maze_y = int(math.floor(new_player_y + (y * 0.1)))
-				if m.maze_map.get((maze_x, maze_y), maze.WALL) == maze.WALL:
+				if original_maze.maze_map.get((maze_x, maze_y), maze.WALL) == maze.WALL:
 					collide = True
 
 		if not collide:
@@ -202,7 +239,7 @@ def main():
 			player_y = new_player_y
 			maze_x = int(math.floor(new_player_x))
 			maze_y = int(math.floor(new_player_y))
-			if m.maze_map.get((maze_x, maze_y), maze.WALL) == maze.FINISH:
+			if original_maze.maze_map.get((maze_x, maze_y), maze.WALL) == maze.FINISH:
 				print ("You win!")
 				break
 				
