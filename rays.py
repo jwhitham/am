@@ -1,3 +1,5 @@
+# 3D maze, ray casting prototype
+# Use arrow keys to navigate to the exit
 
 import pygame
 from pygame.locals import *
@@ -14,7 +16,8 @@ def main():
 	s = pygame.display.set_mode((HALF_WIDTH * 2, HALF_HEIGHT * 2))
 	clock = pygame.time.Clock()
 
-	original_maze = maze.Maze(21, 21, 1)
+	# generate maze
+	original_maze = maze.Maze(15, 15, 2)
 	player_x = player_y = 0
 
 	for maze_row in range(original_maze.rows):
@@ -259,22 +262,29 @@ def main():
 			break
 
 		# detect collision
-		collide = False
-		for x in range(-1, 2, 2):
-			maze_x = (new_player_x - (x * FIXED_POINT / 10)) / FIXED_POINT
-			for y in range(-1, 2, 2):
-				maze_y = (new_player_y - (y * FIXED_POINT / 10)) / FIXED_POINT
-				if original_maze.maze_map.get((maze_x, maze_y), maze.WALL) == maze.WALL:
-					collide = True
+		maze_y = new_player_y / FIXED_POINT
+		maze_x = (new_player_x - (FIXED_POINT / 10)) / FIXED_POINT
+		if original_maze.maze_map.get((maze_x, maze_y), maze.WALL) == maze.WALL:
+			new_player_x = player_x
+		maze_x = (new_player_x + (FIXED_POINT / 10)) / FIXED_POINT
+		if original_maze.maze_map.get((maze_x, maze_y), maze.WALL) == maze.WALL:
+			new_player_x = player_x
 
-		if not collide:
-			player_x = new_player_x
-			player_y = new_player_y
-			maze_x = new_player_x / FIXED_POINT
-			maze_y = new_player_y / FIXED_POINT
-			if original_maze.maze_map.get((maze_x, maze_y), maze.WALL) == maze.FINISH:
-				print ("You win!")
-				break
+		maze_x = new_player_x / FIXED_POINT
+		maze_y = (new_player_y - (FIXED_POINT / 10)) / FIXED_POINT
+		if original_maze.maze_map.get((maze_x, maze_y), maze.WALL) == maze.WALL:
+			new_player_y = player_y
+		maze_y = (new_player_y + (FIXED_POINT / 10)) / FIXED_POINT
+		if original_maze.maze_map.get((maze_x, maze_y), maze.WALL) == maze.WALL:
+			new_player_y = player_y
+
+		player_x = new_player_x
+		player_y = new_player_y
+		maze_x = player_x / FIXED_POINT
+		maze_y = player_y / FIXED_POINT
+		if original_maze.maze_map.get((maze_x, maze_y), maze.WALL) == maze.FINISH:
+			print ("You win!")
+			break
 				
 		pygame.time.wait(40)
 
