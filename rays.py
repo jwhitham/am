@@ -5,6 +5,7 @@ import math
 import maze
 HALF_WIDTH = 320
 HALF_HEIGHT = 240
+FIXED_POINT = 100000
 MU = 24
 SHOW_MAP = False
 
@@ -19,8 +20,8 @@ def main():
 	for maze_row in range(original_maze.rows):
 		for maze_column in range(original_maze.columns):
 			if original_maze.maze_map.get((maze_column, maze_row), 0) == maze.START:
-				player_x = maze_column + 0.5
-				player_y = maze_row + 0.5
+				player_x = (maze_column * FIXED_POINT) + (FIXED_POINT / 2)
+				player_y = (maze_row * FIXED_POINT) + (FIXED_POINT / 2)
 				break
 
 	#for maze_row in range(2, original_maze.rows - 2):
@@ -36,8 +37,8 @@ def main():
 		s.fill((0, 0, 0))
 
 		# vector along the line that the player faces
-		camera_vector_x = math.cos(camera_angle)
-		camera_vector_y = math.sin(camera_angle)
+		camera_vector_x = int(math.floor(FIXED_POINT * math.cos(camera_angle)))
+		camera_vector_y = int(math.floor(FIXED_POINT * math.sin(camera_angle)))
 
 		# normal to the camera vector (projection plane for view)
 		plane_vector_x = -camera_vector_y
@@ -55,59 +56,60 @@ def main():
 			#assert 0.70 <= ray_vector_x, (ray_angle, ray_vector_x)
 			#assert abs(ray_vector_y) <= 0.71, (ray_angle, ray_vector_y)
 
-			maze_x = int(math.floor(viewer_x))
-			maze_y = int(math.floor(viewer_y))
+			maze_x = viewer_x / FIXED_POINT
+			maze_y = viewer_y / FIXED_POINT
 
 			while (maze_x < original_maze.columns) and (abs(maze_y) < original_maze.columns):
-				sub_x = viewer_x - maze_x
-				sub_y = viewer_y - maze_y
-				assert 0 <= sub_x <= 1.0
-				assert 0 <= sub_y <= 1.0
+				sub_x = viewer_x - (maze_x * FIXED_POINT)
+				sub_y = viewer_y - (maze_y * FIXED_POINT)
+				assert 0 <= sub_x <= FIXED_POINT
+				assert 0 <= sub_y <= FIXED_POINT
 
 				# find first intersection with horizontal line
 				i1x = i1y = None
-				if ray_vector_y < 0.0:
+				if ray_vector_y < 0:
 					# above (left hand side)
-					i1x = viewer_x + ((ray_vector_x * sub_y) / (- ray_vector_y))
-					i1y = maze_y + 0.0
-				elif ray_vector_y > 0.0:
+					i1x = viewer_x + (((ray_vector_x * sub_y) / (- ray_vector_y)))
+					i1y = maze_y * FIXED_POINT
+				elif ray_vector_y > 0:
 					# below (right hand side)
-					i1x = viewer_x + ((ray_vector_x * (1.0 - sub_y)) / (ray_vector_y))
-					i1y = maze_y + 1.0
+					i1x = viewer_x + (((ray_vector_x * (FIXED_POINT - sub_y)) / (ray_vector_y)))
+					i1y = (maze_y + 1) * FIXED_POINT
 			
 				# find first intersection with vertical line
-				i2x = maze_x + 1.0
-				i2y = viewer_y + (((1.0 - sub_x) * ray_vector_y) / ray_vector_x)
+				i2x = (maze_x + 1) * FIXED_POINT
+				i2y = viewer_y + ((((FIXED_POINT - sub_x) * ray_vector_y) / ray_vector_x))
 
 				if (i1x == None) or (i2x < i1x):
 					# crosses vertical line first
 					maze_x += 1
 					viewer_x = i2x
 					viewer_y = i2y
-					assert maze_x == int(math.floor(viewer_x))
+					assert maze_x == (viewer_x / FIXED_POINT)
 					#assert maze_y == int(math.floor(viewer_y))
 
-					texture_x = int(math.floor(i2y * texture_width))
+					texture_x = (i2y * texture_width) / FIXED_POINT
 					texture_x %= texture_width
 				else:
 					# crosses horizontal line first
 					if i2x == i1x:
 						# special case: crosses both lines at once
+						i2y = i1y
 						assert i2y == i1y
 						maze_x += 1
 
 					viewer_x = i1x
 					viewer_y = i1y
-					assert maze_x == int(math.floor(viewer_x)), (maze_x, viewer_x)
-					if ray_vector_y < 0.0:
-						assert maze_y == int(math.floor(viewer_y))
+					assert maze_x == (viewer_x / FIXED_POINT)
+					if ray_vector_y < 0:
+						assert maze_y == (viewer_y / FIXED_POINT)
 						maze_y -= 1
-						texture_x = int(math.floor(i1x * texture_width))
+						texture_x = (i1x * texture_width) / FIXED_POINT
 						texture_x %= texture_width
 					else:
 						maze_y += 1
-						assert maze_y == int(math.floor(viewer_y))
-						texture_x = int(math.floor(i1x * texture_width))
+						assert maze_y == (viewer_y / FIXED_POINT)
+						texture_x = (i1x * texture_width) / FIXED_POINT
 						texture_x = texture_width - (texture_x % texture_width) - 1
 
 
@@ -119,22 +121,29 @@ def main():
 					# It is normal to the camera_vector plane. Find point where the
 					# two intersect  
 
-					dist = viewer_x - player_x
+					dist = float(viewer_x - player_x) / FIXED_POINT
 					xa = camera_vector_x
 					ya = camera_vector_y
 					xb = plane_vector_x
 					yb = plane_vector_y
 					a = (xa * yb) - (xb * ya)
-					if a != 0.0:
+					a /= FIXED_POINT
+					if a != 0:
 						b = (xa * player_y) + (viewer_x * ya) - (player_x * ya) - (xa * viewer_y)
 						tb = b / a
-						intersect_x = viewer_x + (xb * tb)
-						intersect_y = viewer_y + (yb * tb)
+						intersect_x = viewer_x + ((xb * tb) / FIXED_POINT)
+						intersect_y = viewer_y + ((yb * tb) / FIXED_POINT)
 						tmp = (intersect_x - player_x) ** 2
 						tmp += (intersect_y - player_y) ** 2
-						dist = math.sqrt(tmp)
+						dist = math.floor(math.sqrt(tmp))
+						dist /= FIXED_POINT
 
-					height = (2 * (HALF_HEIGHT - 1)) / dist
+					#dist = float(viewer_x - player_x) / FIXED_POINT
+
+					if dist != 0:
+						height = ((2 * (HALF_HEIGHT - 1)) / dist)
+					else:
+						height = 1
 					h = maze_x + maze_y
 					h = (h % 7) + 1
 					r = 255 * (h & 1)
@@ -142,14 +151,14 @@ def main():
 					b = 255 * ((h & 4) / 4)
 					if SHOW_MAP:
 						pygame.draw.line(s, (r, g, b),
-							(int(viewer_x * MU) + HALF_WIDTH, int(viewer_y * MU) + HALF_HEIGHT),
-							(int(player_x * MU) + HALF_WIDTH, int(player_y * MU) + HALF_HEIGHT))
+							((int(viewer_x * MU) / FIXED_POINT) + HALF_WIDTH, (int(viewer_y * MU) / FIXED_POINT) + HALF_HEIGHT),
+							((int(player_x * MU) / FIXED_POINT) + HALF_WIDTH, (int(player_y * MU) / FIXED_POINT) + HALF_HEIGHT))
 					#pygame.draw.line(s, (r, g, b),
 					#	(screen_x + HALF_WIDTH, HALF_HEIGHT - height),
 					#	(screen_x + HALF_WIDTH, HALF_HEIGHT + height))
 
-					maze_x = int(math.floor(player_x))
-					maze_y = int(math.floor(player_y))
+					maze_x = player_x / FIXED_POINT
+					maze_y = player_y / FIXED_POINT
 					save_pos = (maze_x, maze_y)
 					save_val = original_maze.maze_map[save_pos]
 					original_maze.maze_map[save_pos] = '*'
@@ -213,11 +222,11 @@ def main():
 		if key == K_RIGHT:
 			camera_angle += 0.1
 		if key == K_DOWN:
-			new_player_x -= 0.1 * camera_vector_x
-			new_player_y -= 0.1 * camera_vector_y
+			new_player_x -= camera_vector_x / 10
+			new_player_y -= camera_vector_y / 10
 		if key == K_UP:
-			new_player_x += 0.1 * camera_vector_x
-			new_player_y += 0.1 * camera_vector_y
+			new_player_x += camera_vector_x / 10
+			new_player_y += camera_vector_y / 10
 		if key == K_z:
 			camera_angle -= 0.1
 		if key == K_x:
@@ -228,17 +237,17 @@ def main():
 		# detect collision
 		collide = False
 		for x in range(-1, 2, 2):
-			maze_x = int(math.floor(new_player_x - (x * 0.1)))
+			maze_x = (new_player_x - (x * FIXED_POINT / 10)) / FIXED_POINT
 			for y in range(-1, 2, 2):
-				maze_y = int(math.floor(new_player_y + (y * 0.1)))
+				maze_y = (new_player_y - (y * FIXED_POINT / 10)) / FIXED_POINT
 				if original_maze.maze_map.get((maze_x, maze_y), maze.WALL) == maze.WALL:
 					collide = True
 
 		if not collide:
 			player_x = new_player_x
 			player_y = new_player_y
-			maze_x = int(math.floor(new_player_x))
-			maze_y = int(math.floor(new_player_y))
+			maze_x = new_player_x / FIXED_POINT
+			maze_y = new_player_y / FIXED_POINT
 			if original_maze.maze_map.get((maze_x, maze_y), maze.WALL) == maze.FINISH:
 				print ("You win!")
 				break
