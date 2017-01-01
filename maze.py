@@ -8,15 +8,28 @@ FLAGGED2 = 'p'
 ARROW = Image.open("images/arrow.png")
 
 class Maze:
-	def __init__(self, rows, columns, seed):
+	def __init__(self, rows, columns, seed, maze_map = None):
 		self.rows = rows
 		self.columns = columns
 		self.seed = seed
-		self.maze_map = aimee_maze.make_maze(rows, columns, seed)
-		self.test_maze_find_start_finish()
+		self.maze_map = maze_map
+		if self.maze_map == None:
+			self.maze_map = aimee_maze.make_maze(rows, columns, seed)
+			self.test_maze_find_start_finish()
 
 	def print_maze(self):
 		aimee_maze.print_maze(self.rows, self.columns, self.maze_map)
+
+	def rotate_maze(self):
+		# rotate clockwise
+		new_maze_map = dict()
+		for oy in range(self.rows):
+			for ox in range(self.columns):
+				nx = self.rows - 1 - oy
+				ny = ox
+				new_maze_map[(nx, ny)] = self.maze_map[(ox, oy)]
+
+		return Maze(rows = self.columns, columns = self.rows, seed = self.seed, maze_map = new_maze_map)
 
 	def overlay(self, img, (bx1, by1, bx2, by2), border_size):
 		(_, _, orig_width, orig_height) = img.getbbox()
