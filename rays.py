@@ -5,7 +5,7 @@ import math
 import maze
 HALF_WIDTH = 320
 HALF_HEIGHT = 240
-FIXED_POINT = 100000
+FIXED_POINT = 256
 MU = 24
 SHOW_MAP = False
 
@@ -86,7 +86,6 @@ def main():
 					viewer_x = i2x
 					viewer_y = i2y
 					assert maze_x == (viewer_x / FIXED_POINT)
-					#assert maze_y == int(math.floor(viewer_y))
 
 					texture_x = (i2y * texture_width) / FIXED_POINT
 					texture_x %= texture_width
@@ -121,7 +120,6 @@ def main():
 					# It is normal to the camera_vector plane. Find point where the
 					# two intersect  
 
-					dist = float(viewer_x - player_x) / FIXED_POINT
 					xa = camera_vector_x
 					ya = camera_vector_y
 					xb = plane_vector_x
@@ -135,13 +133,14 @@ def main():
 						intersect_y = viewer_y + ((yb * tb) / FIXED_POINT)
 						tmp = (intersect_x - player_x) ** 2
 						tmp += (intersect_y - player_y) ** 2
-						dist = math.floor(math.sqrt(tmp))
-						dist /= FIXED_POINT
 
-					#dist = float(viewer_x - player_x) / FIXED_POINT
+						# approximation for square root - more iterations improve accuracy
+						sqrt = FIXED_POINT
+						for i in range(4):
+							sqrt = (sqrt + (tmp / sqrt)) / 2
 
-					if dist != 0:
-						height = ((2 * (HALF_HEIGHT - 1)) / dist)
+						height = ((2 * FIXED_POINT * (HALF_HEIGHT - 1)) / sqrt)
+						
 					else:
 						height = 1
 					h = maze_x + maze_y
@@ -210,7 +209,6 @@ def main():
 		while e.type != NOEVENT:
 			if e.type == QUIT:
 				key = K_ESCAPE
-				break
 			if e.type == KEYDOWN:
 				key = e.key
 			if e.type == KEYUP:
