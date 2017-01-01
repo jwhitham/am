@@ -22,17 +22,21 @@ def main():
 				player_y = maze_row + 0.5
 				break
 
+	#for maze_row in range(2, m.rows - 2):
+	#	for maze_column in range(2, m.columns - 2):
+	#		m.maze_map[(maze_column, maze_row)] = maze.CONNECTED
+
 	while True:
 		s.fill((0, 0, 0))
 		for screen_x in range(-HALF_WIDTH, HALF_WIDTH, 1):
-			ray_angle = (screen_x * math.pi * 0.25) / HALF_WIDTH
-			ray_vector_x = math.cos(ray_angle)
-			ray_vector_y = math.sin(ray_angle)
+			#ray_angle = (screen_x * math.pi * 0.25) / HALF_WIDTH
+			ray_vector_x = 1.0
+			ray_vector_y = (0.99 * screen_x) / HALF_WIDTH
 			viewer_x = player_x
 			viewer_y = player_y
 
-			assert 0.70 <= ray_vector_x, (ray_angle, ray_vector_x)
-			assert abs(ray_vector_y) <= 0.71, (ray_angle, ray_vector_y)
+			#assert 0.70 <= ray_vector_x, (ray_angle, ray_vector_x)
+			#assert abs(ray_vector_y) <= 0.71, (ray_angle, ray_vector_y)
 
 			maze_x = int(math.floor(viewer_x))
 			maze_y = int(math.floor(viewer_y))
@@ -121,13 +125,13 @@ def main():
 		e = pygame.event.wait()
 		if e.type == KEYDOWN:
 			if e.key == K_LEFT:
-				player_y -= 1
+				player_y -= 0.1
 			if e.key == K_RIGHT:
-				player_y += 1
+				player_y += 0.1
 			if e.key == K_DOWN:
-				player_x -= 1
+				player_x -= 0.1
 			if e.key == K_UP:
-				player_x += 1
+				player_x += 0.1
 			if e.key == K_ESCAPE:
 				break
 		if e.type == QUIT:
