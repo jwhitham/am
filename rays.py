@@ -11,6 +11,7 @@ SHOW_MAP = False
 def main():
 	pygame.init()
 	s = pygame.display.set_mode((HALF_WIDTH * 2, HALF_HEIGHT * 2))
+	clock = pygame.time.Clock()
 
 	m = maze.Maze(21, 21, 1)
 	player_x = player_y = 0
@@ -25,6 +26,10 @@ def main():
 	#for maze_row in range(2, m.rows - 2):
 	#	for maze_column in range(2, m.columns - 2):
 	#		m.maze_map[(maze_column, maze_row)] = maze.CONNECTED
+
+	texture_width = m.columns
+	texture_height = m.rows
+	key = None
 
 	while True:
 		s.fill((0, 0, 0))
@@ -69,6 +74,9 @@ def main():
 					viewer_y = i2y
 					assert maze_x == int(math.floor(viewer_x))
 					assert maze_y == int(math.floor(viewer_y))
+
+					texture_x = int(math.floor(i2y * texture_width))
+					texture_x %= texture_width
 				else:
 					# crosses horizontal line first
 					if i2x == i1x:
@@ -82,15 +90,20 @@ def main():
 					if ray_vector_y < 0.0:
 						assert maze_y == int(math.floor(viewer_y))
 						maze_y -= 1
+						texture_x = int(math.floor(i1x * texture_width))
+						texture_x %= texture_width
 					else:
 						maze_y += 1
 						assert maze_y == int(math.floor(viewer_y))
+						texture_x = int(math.floor(i1x * texture_width))
+						texture_x = texture_width - (texture_x % texture_width) - 1
+
 
 
 				if (m.maze_map.get((maze_x, maze_y), 0) == maze.WALL):
 					# reached wall
 					dist = viewer_x - player_x
-					height = min(HALF_HEIGHT - 1, (HALF_HEIGHT - 1) / dist)
+					height = (2 * (HALF_HEIGHT - 1)) / dist
 					h = maze_x + maze_y
 					h = (h % 7) + 1
 					r = 255 * (h & 1)
@@ -100,9 +113,38 @@ def main():
 						pygame.draw.line(s, (r, g, b),
 							(int(viewer_x * MU) + HALF_WIDTH, int(viewer_y * MU) + HALF_HEIGHT),
 							(int(player_x * MU) + HALF_WIDTH, int(player_y * MU) + HALF_HEIGHT))
-					pygame.draw.line(s, (r, g, b),
-						(screen_x + HALF_WIDTH, HALF_HEIGHT - height),
-						(screen_x + HALF_WIDTH, HALF_HEIGHT + height))
+					#pygame.draw.line(s, (r, g, b),
+					#	(screen_x + HALF_WIDTH, HALF_HEIGHT - height),
+					#	(screen_x + HALF_WIDTH, HALF_HEIGHT + height))
+
+					maze_x = int(math.floor(player_x))
+					maze_y = int(math.floor(player_y))
+					save_pos = (maze_x, maze_y)
+					save_val = m.maze_map[save_pos]
+					m.maze_map[save_pos] = '*'
+
+					tmp_y0 = tmp_y1 = HALF_HEIGHT - (height / 2)
+					tmp_x = screen_x + HALF_WIDTH
+					for texture_y in range(texture_height):
+						tmp_y2 = (((texture_y + 1) * height) / texture_height) + tmp_y0
+						v = m.maze_map.get((texture_x, texture_y), 0)
+						if v == maze.WALL:
+							h = ((texture_x + texture_y) % 9)
+							r = g = b = 127 + (h * 16)
+							if ((texture_x == 0) or (texture_y == 0)
+							or (texture_x == (texture_width - 1))
+							or (texture_y == (texture_height - 1))):
+								r /= 4
+								g = b = 0
+						elif v == '*':
+							r = g = 0
+							b = 255
+						else:
+							r = g = b = 0
+						pygame.draw.line(s, (r, g, b), (tmp_x, tmp_y1), (tmp_x, tmp_y2))
+						tmp_y1 = tmp_y2
+
+					m.maze_map[save_pos] = save_val
 					break
 
 		if SHOW_MAP:
@@ -122,20 +164,49 @@ def main():
 
 
 		pygame.display.flip()
-		e = pygame.event.wait()
-		if e.type == KEYDOWN:
-			if e.key == K_LEFT:
-				player_y -= 0.1
-			if e.key == K_RIGHT:
-				player_y += 0.1
-			if e.key == K_DOWN:
-				player_x -= 0.1
-			if e.key == K_UP:
-				player_x += 0.1
-			if e.key == K_ESCAPE:
+		new_player_x = player_x
+		new_player_y = player_y
+		e = pygame.event.poll()
+		while e.type != NOEVENT:
+			if e.type == QUIT:
+				key = K_ESCAPE
 				break
-		if e.type == QUIT:
+			if e.type == KEYDOWN:
+				key = e.key
+			if e.type == KEYUP:
+				key = None
+			e = pygame.event.poll()
+
+		if key == K_LEFT:
+			new_player_y -= 0.1
+		if key == K_RIGHT:
+			new_player_y += 0.1
+		if key == K_DOWN:
+			new_player_x -= 0.1
+		if key == K_UP:
+			new_player_x += 0.1
+		if key == K_ESCAPE:
 			break
+
+		# detect collision
+		collide = False
+		for x in range(-1, 2, 2):
+			maze_x = int(math.floor(new_player_x - (x * 0.1)))
+			for y in range(-1, 2, 2):
+				maze_y = int(math.floor(new_player_y + (y * 0.1)))
+				if m.maze_map.get((maze_x, maze_y), maze.WALL) == maze.WALL:
+					collide = True
+
+		if not collide:
+			player_x = new_player_x
+			player_y = new_player_y
+			maze_x = int(math.floor(new_player_x))
+			maze_y = int(math.floor(new_player_y))
+			if m.maze_map.get((maze_x, maze_y), maze.WALL) == maze.FINISH:
+				print ("You win!")
+				break
+				
+		pygame.time.wait(40)
 
 	pygame.quit()
 
