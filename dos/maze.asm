@@ -4,14 +4,11 @@ UNCONNECTED equ '.'
 CONNECTED equ ' '
 ROWS equ 27
 COLUMNS equ 41
-TEXT_ATTRIBUTE equ 12
-SCREEN_COLUMNS equ 40
-SCREEN_ROWS equ 25
-MAZE_ATTRIBUTE equ 0x0f
-PLAYER_ATTRIBUTE equ 0x1e
-SEEN_ATTRIBUTE equ 0x1e
-PLAYER equ 5
-BASE_VIDEO_MEMORY equ 0xb800
+BASE_VIDEO_MEMORY equ 0xa000
+HALF_WIDTH EQU 160
+HALF_HEIGHT EQU 100
+FIXED_POINT EQU 256
+
 
 	section .text
 	cpu 8086
@@ -19,8 +16,8 @@ BASE_VIDEO_MEMORY equ 0xb800
 	org 0x100
 
 start:
-; 40 column text mode
-	xor ax, ax
+; MCGA mode
+	mov ax, 19 
 	int	0x10
 
 ; init pseudo random number generator from RTC
@@ -28,11 +25,6 @@ start:
 	int 0x1a
 	xor [random_state_z], cx
 	xor [random_state_w], dx
-
-; hide the cursor
-	mov ah, 1
-	xor cx, 0x2000
-	int 0x10
 
 ; Direction flag remains clear for whole program
 	cld
@@ -290,136 +282,265 @@ removed_all:
 	mov al, WALL
 	mov [si - 1], al
 
-	call display_maze
-;
-;	; Mark start point
-;	(x, y) = start
-;	maze_map[x, y] = START
-;
-;	; Maze is finished
-;	return maze_map
-;
-;	It's time to play!
 
-solving_maze:
-		; get X and Y for player
-		mov si, [player_location]
-		mov ax, si
-		xor dx, dx
-		sub ax, maze_map
 
-		; DX:AX = location
-		mov bx, COLUMNS
-		div bx
-		; DX = X = location % COLUMNS
-		; AX = Y = location / COLUMNS
+	; while True:
+game_loop:
+		; drawing
 
-		; player has won if X >= last column
-		cmp dx, COLUMNS - 1
-		jge win_game
+		; camera_vector_x = FIXED_POINT
+		; camera_vector_y = 0
+		; ; normal to the camera vector (projection plane for view)
+		; plane_vector_x = -camera_vector_y
+		; plane_vector_y = camera_vector_x
+		
+		camera_vector_x EQU FIXED_POINT
+		camera_vector_y EQU 0
+		; ; normal to the camera vector (projection plane for view)
+		plane_vector_x EQU -camera_vector_y
+		plane_vector_y EQU camera_vector_x
 
-		; draw on screen
-		push dx
-			mov dx, SCREEN_COLUMNS * 2
-			dec ax
-			mul dx
-			; AX = beginning of row
-		pop dx
-		dec dx
-		add ax, dx
-		add ax, dx ; AX = location of player on screen
-		mov di, ax
-		mov ax, (PLAYER_ATTRIBUTE << 8) | PLAYER ; draw player on screen
-		mov [fs:di], ax
+		mov word [screen_x], -HALF_WIDTH
+		; for screen_x in range(-HALF_WIDTH, HALF_WIDTH, 1):
+draw_x_loop:
+			; ; vector for this screen X (the ray being cast)
+			; ray_vector_x = camera_vector_x + ((plane_vector_x * screen_x) / HALF_WIDTH)
+			; mov ax, plane_vector_x
+			; mov cx, camera_vector_x
+			; call ax_times_screen_x_div_half_width_plus_cx
 
-invalid_move:
-		; wait for a move - blocking read from keyboard 
-			mov si, [player_location]
-			mov ah, 0
-			int 0x16
-			or al, 0x20 ; lower case
+			; ray_vector_y = camera_vector_y + ((plane_vector_y * screen_x) / HALF_WIDTH)
+			mov ax, plane_vector_y
+			mul word [screen_x]
+			mov bx, HALF_WIDTH
+			mov dh, dl ; sign extending for integer division
+			idiv bx
+			mov [ray_vector_y], ax
 
-			cmp al, 'j'
-			jz go_down
-			cmp ah, 0x50
-			jz go_down
+			; viewer_x = rotated_player_x
+			; viewer_y = rotated_player_y
+			; maze_x = viewer_x / FIXED_POINT
+			; maze_y = viewer_y / FIXED_POINT
+			mov ax, [player_x]
+			mov [viewer_x], ax
+			mov [maze_x_byte], ah
+			mov ax, [player_y]
+			mov [viewer_y], ax
+			mov [maze_y_byte], ah
 
-			cmp al, 'k'
-			jz go_up
-			cmp ah, 0x48
-			jz go_up
 
-			cmp al, 'h'
-			jz go_left
-			cmp ah, 0x4b
-			jz go_left
+			; while (maze_x < rotated_maze.columns) and (abs(maze_y) < rotated_maze.columns):
+find_wall_loop:
+				; sub_x = viewer_x - (maze_x * FIXED_POINT)
+				mov ax, [viewer_x]
+				sub ax, [maze_x_fp_word]
+				mov [sub_x], ax
 
-			cmp al, 'l'
-			jz go_right
-			cmp ah, 0x4d
-			jz go_right
+				; sub_y = viewer_y - (maze_y * FIXED_POINT)
+				mov ax, [viewer_y]
+				sub ax, [maze_y_fp_word]
+				mov [sub_y], ax
 
-			cmp ah, 1
-			jz press_escape
-			jmp invalid_move
+				; ; find first intersection with horizontal line
+				; i1x = i1y = None
+				xor bx, bx
+				not bx
+				mov [i1x], ax ; i1x = 0xffff
 
-go_down:
-		add si, COLUMNS
-		jmp check_move
-go_up:
-		add si, -COLUMNS
-		jmp check_move
-go_left:
-		add si, -1
-		jmp check_move
-go_right:
-		add si, +1
+				mov bx, [ray_vector_y]
+				cmp bx, 0
+				jge not_above		; jump if ray_vector_y >= 0
 
-check_move:
-		mov al, [si]
-		cmp al, CONNECTED
-		jnz invalid_move
+					; above (left hand side) ray_vector_y < 0
+					; i1y = maze_y * FIXED_POINT
+					mov cx, [maze_y_fp_word] ; cx may be stored in i1y now
 
-		; move was valid - undraw the player
-		mov ax, (SEEN_ATTRIBUTE << 8)
-		mov [fs:di], ax
+					; i1x = viewer_x + (((ray_vector_x * sub_y) / (- ray_vector_y)))
+					neg ax ; ax = -sub_y
+					jmp above_or_below
 
-		; move the player
-		mov [player_location], si
+not_above:
+					je done_horizontal ; jump if ray_vector_y == 0
 
-		jmp solving_maze
+					; below (right hand side) ray_vector_y > 0
+					; i1x = viewer_x + (((ray_vector_x * (FIXED_POINT - sub_y)) / (ray_vector_y)))
+					; i1y = (maze_y + 1) * FIXED_POINT
+					mov cx, [maze_y_fp_word]
+					inc ch ; cx may be stored in i1y now
 
-; Copy the current maze to the screen
+					mov dx, FIXED_POINT
+					sub dx, ax
+					mov ax, dx ; ax = FIXED_POINT - sub_y
 
-display_maze:
-;	; Display maze
-	mov dx, BASE_VIDEO_MEMORY
+above_or_below:
+					mov [i1y], cx
+					mul word [ray_vector_x]
+					div word [ray_vector_y]
+					add ax, [viewer_x]
+					mov [i1x], ax
 
-	mov	si, maze_map + COLUMNS + 1		; maze map row 1 col 1
-	mov di, 0							; screen row 0 col 0
-	mov ah, MAZE_ATTRIBUTE					; attribute
-	mov bl, ROWS - 1
+done_horizontal:
 
-display_for_y:
-	mov cx, COLUMNS - 2
+				; find first intersection with vertical line
+				; i2x = i2y = None
+				; if ray_vector_x > 0:
+				;	i2x = (maze_x + 1) * FIXED_POINT
+				;	i2y = viewer_y + ((((FIXED_POINT - sub_x) * ray_vector_y) / ray_vector_x))
+				mov cx, [maze_x_fp_word]
+				inc ch ; cx = i2x
+				mov [i2x], cx
 
-display_for_x:							; copy row Y
-		mov al, [si]					; load maze element
-		mov [fs:di], ax					; copy maze element and attribute to screen
-		inc di							; next screen loc
-		inc di
-		inc si							; next maze loc
-		loop display_for_x
+				mov ax, FIXED_POINT
+				sub ax, [sub_x]
+				mul word [ray_vector_y]
+				div word [ray_vector_x]
+				add ax, [viewer_y]
+				mov [i2y], ax
 
-	inc si								; move to col 0 of next row
-	inc si								; move to col 1 of next row
+				cmp cx, [i1x] ; compare i2x with i1x
+				jge i2x_is_greater_equal
 
-	; screen: go back to first space in row, and then first space in next row:
-	add di, - ((COLUMNS - 2) * 2) + (SCREEN_COLUMNS * 2)
-	dec bl
-	jnz display_for_y
+					; i1x > i2x
+					; crosses vertical line first
+					; maze_x += 1
+					inc byte [maze_x_byte]
+					; viewer_x = i2x
+					; viewer_y = i2y
+					mov [viewer_x], cx ; cx = 12x
+					mov [viewer_y], ax ; ax = i2y
 
-	ret
+					; assert maze_x == (viewer_x / FIXED_POINT)
+					; texture_x = (i2y * texture_width) / FIXED_POINT
+					; texture_x %= texture_width
+					mov [texture_x], ax
+					jmp done_intersection
+
+i2x_is_greater_equal:
+					; i1x <= i2y
+					; if i2x == i1x:
+					jne i2x_is_greater
+
+					;	# special case: crosses both lines at once
+					;	maze_x += 1
+					inc byte [maze_x_byte]
+
+i2x_is_greater:
+					; crosses horizontal line first
+					mov cx, [i1x]
+					mov ax, [i1y]
+					mov [viewer_x], cx ; cx = 11x
+					mov [viewer_y], ax ; ax = i1y
+
+					; assert maze_x == (viewer_x / FIXED_POINT)
+					; if ray_vector_y < 0:
+					mov bx, [ray_vector_y]
+					cmp bx, 0
+					jge not_above_2		; jump if ray_vector_y >= 0
+
+						; assert maze_y == (viewer_y / FIXED_POINT)
+						; maze_y -= 1
+						dec byte [maze_y_byte]
+						; texture_x = (i1x * texture_width) / FIXED_POINT
+						; texture_x %= texture_width
+						mov [texture_x], cx
+						jmp done_intersection
+not_above_2:
+						; maze_y += 1
+						inc byte [maze_y_byte]
+						; assert maze_y == (viewer_y / FIXED_POINT)
+						; texture_x = (i1x * texture_width) / FIXED_POINT
+						; texture_x = texture_width - (texture_x % texture_width) - 1
+						neg cx
+						mov [texture_x], cx
+
+done_intersection:
+				; Ray cast has reached [maze_x], [maze_y]
+				; did we reach a wall?
+				; First we see if we're actually still inside the maze
+				mov [maze_x_byte], al
+				cmp al, COLUMNS
+				jge did_not_find_wall
+
+				; maze_y < ROWS
+				mov [maze_y_byte], bl
+				cmp bl, ROWS
+				jge did_not_find_wall
+
+				; still inside maze, get maze location
+				mov ah, 0 ; AX = maze_y
+				mov dx, COLUMNS
+				mul dx
+				mov bh, 0 ; BX = maze_y
+				add ax, bx
+				add ax, maze_map
+				mov di, ax
+				mov al, [di]
+				cmp al, WALL
+				jne find_wall_loop ; didn't find a wall ... yet
+
+				; found a wall at [viewer_x], [viewer_y]
+				; distance = viewer_x - rotated_player_x
+				mov [player_x], ax
+				sub ax, [viewer_x]
+
+				; half_height = ((FIXED_POINT * (HALF_HEIGHT - 1)) / distance)
+				mov bx, FIXED_POINT * (HALF_HEIGHT - 1)
+				xor dx, dx
+				div bx ; AX = half_height
+
+				; clipping
+				cmp ax, HALF_HEIGHT
+				jle no_clip
+					mov ax, HALF_HEIGHT - 1
+no_clip:
+				mov [texture_half_height], ax
+
+				mov cx, HALF_HEIGHT
+				sub cx, [texture_half_height] ; CX = draw start row
+				mov di, [screen_x] ; first pixel to draw
+
+				; draw ceiling
+ceiling_draw_loop:
+					mov byte [fs:di], 0
+					add di, HALF_WIDTH * 2
+					loop ceiling_draw_loop
+				
+				; draw texture
+				mov cx, [texture_half_height]
+				add cx, cx ; CX = texture height
+
+				mov bl, [maze_x_byte] 
+				add bl, [maze_y_byte] ; pick a pixel colour
+				xor bl, 0x55
+texture_draw_loop:
+					mov byte [fs:di], bl
+					add di, HALF_WIDTH * 2
+					loop texture_draw_loop
+
+				; draw floor until we reach the end of the video RAM
+floor_draw_loop:
+					mov byte [fs:di], 0
+					add di, HALF_WIDTH * 2
+					cmp di, HALF_WIDTH * 2 * HALF_HEIGHT * 2
+					jl  floor_draw_loop
+
+did_not_find_wall:
+			; end find_wall_loop
+			; do next X
+			mov ax, [screen_x]
+			inc ax
+			mov [screen_x], ax
+			cmp ax, HALF_WIDTH
+			jl  draw_x_loop
+
+
+		; end draw_x_loop
+		; screen is now complete
+
+		jmp game_loop
+
+
+
 
 ; Generate a pseudo random number
 ; When called, BX = top end of range
@@ -495,7 +616,7 @@ exit:
 	mov ax, 0x4c00
 	int	0x21
 
-section .data
+; section .data
 random_state_z:
 	dd			362436069
 random_state_w:
@@ -506,16 +627,37 @@ msg_you_win_the_game:
 	db 		10
 msg_escape:
 	db		'$'
+maze_x_fp_word:
+	db		0
+maze_x_byte:
+	db		0
+maze_y_fp_word:
+	db		0
+maze_y_byte:
+	db		0
+ray_vector_x:
+	dw		FIXED_POINT
 
-section .bss
+; section .bss
 
-player_location:
-	resb	2
-maze_list_length:
-	resb	2
-maze_map:
-	resb	ROWS * COLUMNS
-maze_list:
-	resb	(ROWS * COLUMNS) / 4
+player_location:	resb	2
+maze_list_length: 	resb	2
+maze_map: 			resb	ROWS * COLUMNS
+maze_list: 			resb	(ROWS * COLUMNS) / 4
+screen_x: 			resb	2
+ray_vector_y: 		resb	2
+player_x: 			resb	2
+player_y: 			resb	2
+viewer_x: 			resb	2
+viewer_y: 			resb	2
+sub_x:    			resb	2
+sub_y:    			resb	2
+i1x:      			resb	2
+i2x:      			resb	2
+i1y:      			resb	2
+i2y:      			resb	2
+texture_x:			resb	2
+texture_half_height: resb	2
+
 
 

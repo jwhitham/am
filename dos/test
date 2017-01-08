@@ -1,5 +1,8 @@
 #!/bin/bash -xe
 nasm -o maze.com -l maze.lst maze.asm
+#bcc -0 -S test.c
+#bcc -0 -Md test.c lib.s
+#cp a.out maze.com
 ~/durden/dosbox-0.74/bin/dosbox -conf dosbox-0.74.conf test.bat
 #dosbox -conf dosbox-0.74.conf test.bat
 
