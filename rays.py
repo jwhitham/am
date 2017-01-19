@@ -10,6 +10,7 @@ HALF_HEIGHT = 240
 FIXED_POINT = 256
 MU = 24
 SHOW_MAP = False
+ROTATION = False
 
 def main():
 	pygame.init()
@@ -43,30 +44,39 @@ def main():
 	while True:
 		s.fill((0, 0, 0))
 
-		rotated_camera_angle = camera_angle
-		rotated_player_x = player_x
-		rotated_player_y = player_y
-		rotation_count = 0
+		if ROTATION:
+			rotated_camera_angle = camera_angle
+			rotated_player_x = player_x
+			rotated_player_y = player_y
+			rotation_count = 0
 
-		# rotate maze as drawing algorithm assumes a particular orientation
-		while rotated_camera_angle < (math.pi * -0.25):
-			rotated_camera_angle += math.pi * 0.5
-			for i in range(1):
-				(rotated_player_x, rotated_player_y) = ((rotated_maze.rows * FIXED_POINT) - 1 - rotated_player_y, rotated_player_x)
-				rotation_count += 1
+			# rotate maze as drawing algorithm assumes a particular orientation
+			while rotated_camera_angle < (math.pi * -0.25):
+				rotated_camera_angle += math.pi * 0.5
+				for i in range(1):
+					(rotated_player_x, rotated_player_y) = ((rotated_maze.rows * FIXED_POINT) - 1 - rotated_player_y, rotated_player_x)
+					rotation_count += 1
 
-		while rotated_camera_angle > (math.pi * 0.25):
-			rotated_camera_angle -= math.pi * 0.5
-			for i in range(3):
-				(rotated_player_x, rotated_player_y) = ((rotated_maze.rows * FIXED_POINT) - 1 - rotated_player_y, rotated_player_x)
-				rotation_count += 1
+			while rotated_camera_angle > (math.pi * 0.25):
+				rotated_camera_angle -= math.pi * 0.5
+				for i in range(3):
+					(rotated_player_x, rotated_player_y) = ((rotated_maze.rows * FIXED_POINT) - 1 - rotated_player_y, rotated_player_x)
+					rotation_count += 1
 
-		rotated_maze = rotated_maze_list[rotation_count % 4]
-		assert abs(rotated_camera_angle) <= ((math.pi * 0.25) + 0.01)
+			rotated_maze = rotated_maze_list[rotation_count % 4]
+			assert abs(rotated_camera_angle) <= ((math.pi * 0.25) + 0.01)
 
-		# vector along the line that the player faces
-		camera_vector_x = int(math.floor(FIXED_POINT * math.cos(rotated_camera_angle)))
-		camera_vector_y = int(math.floor(FIXED_POINT * math.sin(rotated_camera_angle)))
+			# vector along the line that the player faces
+			camera_vector_x = int(math.floor(FIXED_POINT * math.cos(rotated_camera_angle)))
+			camera_vector_y = int(math.floor(FIXED_POINT * math.sin(rotated_camera_angle)))
+		else:
+			rotated_camera_angle = camera_angle = 0.0
+			rotated_player_x = player_x
+			rotated_player_y = player_y
+			rotation_count = 0
+			rotated_maze = rotated_maze_list[0]
+			camera_vector_x = FIXED_POINT
+			camera_vector_y = 0
 
 		# normal to the camera vector (projection plane for view)
 		plane_vector_x = -camera_vector_y
@@ -149,29 +159,34 @@ def main():
 					# It is normal to the camera_vector plane. Find point where the
 					# two intersect  
 
-					xa = camera_vector_x
-					ya = camera_vector_y
-					xb = plane_vector_x
-					yb = plane_vector_y
-					a = (xa * yb) - (xb * ya)
-					a /= FIXED_POINT
-					if a != 0:
-						b = (xa * rotated_player_y) + (viewer_x * ya) - (rotated_player_x * ya) - (xa * viewer_y)
-						tb = b / a
-						intersect_x = viewer_x + ((xb * tb) / FIXED_POINT)
-						intersect_y = viewer_y + ((yb * tb) / FIXED_POINT)
-						tmp = (intersect_x - rotated_player_x) ** 2
-						tmp += (intersect_y - rotated_player_y) ** 2
+					if ROTATION:
+						xa = camera_vector_x
+						ya = camera_vector_y
+						xb = plane_vector_x
+						yb = plane_vector_y
+						a = (xa * yb) - (xb * ya)
+						a /= FIXED_POINT
+						if a != 0:
+							b = (xa * rotated_player_y) + (viewer_x * ya) - (rotated_player_x * ya) - (xa * viewer_y)
+							tb = b / a
+							intersect_x = viewer_x + ((xb * tb) / FIXED_POINT)
+							intersect_y = viewer_y + ((yb * tb) / FIXED_POINT)
+							tmp = (intersect_x - rotated_player_x) ** 2
+							tmp += (intersect_y - rotated_player_y) ** 2
 
-						# approximation for square root - more iterations improve accuracy
-						sqrt = FIXED_POINT
-						for i in range(4):
-							sqrt = (sqrt + (tmp / sqrt)) / 2
+							# approximation for square root - more iterations improve accuracy
+							sqrt = FIXED_POINT
+							for i in range(4):
+								sqrt = (sqrt + (tmp / sqrt)) / 2
 
-						height = ((2 * FIXED_POINT * (HALF_HEIGHT - 1)) / sqrt)
-						
+							height = ((2 * FIXED_POINT * (HALF_HEIGHT - 1)) / sqrt)
+							
+						else:
+							height = 1
 					else:
-						height = 1
+						distance = viewer_x - rotated_player_x
+						height = ((2 * FIXED_POINT * (HALF_HEIGHT - 1)) / distance)
+
 					h = maze_x + maze_y
 					h = (h % 7) + 1
 					r = 255 * (h & 1)
@@ -231,8 +246,12 @@ def main():
 		pygame.display.flip()
 		new_player_x = player_x
 		new_player_y = player_y
-		camera_vector_x = int(math.floor(FIXED_POINT * math.cos(camera_angle)))
-		camera_vector_y = int(math.floor(FIXED_POINT * math.sin(camera_angle)))
+		if ROTATION:
+			camera_vector_x = int(math.floor(FIXED_POINT * math.cos(camera_angle)))
+			camera_vector_y = int(math.floor(FIXED_POINT * math.sin(camera_angle)))
+		else:
+			camera_vector_x = FIXED_POINT
+			camera_vector_y = 0
 
 		e = pygame.event.poll()
 		while e.type != NOEVENT:
@@ -245,9 +264,17 @@ def main():
 			e = pygame.event.poll()
 
 		if key == K_LEFT:
-			camera_angle -= 0.1
+			if ROTATION:
+				camera_angle -= 0.1
+			else:
+				new_player_y -= camera_vector_x / 10
+				new_player_x -= camera_vector_y / 10
 		if key == K_RIGHT:
-			camera_angle += 0.1
+			if ROTATION:
+				camera_angle += 0.1
+			else:
+				new_player_y += camera_vector_x / 10
+				new_player_x += camera_vector_y / 10
 		if key == K_DOWN:
 			new_player_x -= camera_vector_x / 10
 			new_player_y -= camera_vector_y / 10

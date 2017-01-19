@@ -1,24 +1,21 @@
-; 1 
-; 1 # 1 "test.c"
-; 1 
-; 2 int main()
-; 3 {
-global _main
-_main:
-; 4 	return 0;
-push	bp
-mov	bp,sp
-push	di
-push	si
-xor	ax,ax
-pop	si
-pop	di
-pop	bp
-ret
-;BCC_EOS
-; 5 }
-; 6 
-.data
-.bss
 
-; 0 errors detected
+export _lib_init
+_lib_init:
+	mov	ax, #4
+	int #0x10
+	ret
+
+export	_set_pixel
+_set_pixel:
+	push si
+	mov si, sp
+	push gs
+	mov ax, #0xb800
+	mov gs, ax
+	mov	ax,6[si]
+	mov	si,4[si]
+	gseg
+	mov [si],al
+	pop gs
+	pop si
+	ret

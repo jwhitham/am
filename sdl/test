@@ -1,0 +1,3 @@
+#!/bin/bash -xe
+gcc -o main main.c -Wall -g -O0 -lSDL && ./main
+
