@@ -1,3 +1,4 @@
 #!/bin/bash -xe
-gcc -o main main.c -Wall -g -O0 -lSDL && ./main
+gcc -o main main.c draw_view.c -Wall -g -O0 -lSDL -lm
+./main
 
