@@ -5,7 +5,7 @@
 
 #include "draw_view.h"
 
-#define UNDEFINED ((fixed_t) 0x7fff)
+#define UNDEFINED ((fixed_t) 0x7fffffff)
 
 void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, fixed_t camera_angle)
 {
