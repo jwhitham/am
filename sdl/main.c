@@ -18,8 +18,8 @@ int main (int argc, char ** argv)
 	int					run = 1;
 	uint32_t			i = 0;
 	SDL_Color			colours[256];
-	int16_t				camera_x = FIXED_POINT * 2;
-	int16_t				camera_y = FIXED_POINT * 2;
+	int16_t				camera_x = 1 + FIXED_POINT * 2;
+	int16_t				camera_y = 1 + FIXED_POINT * 2;
 	int16_t				camera_angle = 0;
 
 
@@ -44,6 +44,7 @@ int main (int argc, char ** argv)
 	do {
 		SDL_LockSurface (window);
 		memset (window->pixels, 0, WINDOW_WIDTH * WINDOW_HEIGHT);
+		//memset (window->pixels + (WINDOW_WIDTH * 100), 0xff, WINDOW_WIDTH * 50);
 		draw_view (window->pixels, camera_x, camera_y, camera_angle);
 		SDL_UnlockSurface (window);
 		SDL_Flip (window);
@@ -60,12 +61,16 @@ int main (int argc, char ** argv)
 				case SDL_KEYDOWN:
 					switch (ev.key.keysym.sym) {
 						case SDLK_LEFT:
+							camera_x -= FIXED_POINT / 16;
 							break;
 						case SDLK_UP:
+							camera_y -= FIXED_POINT / 16;
 							break;
 						case SDLK_RIGHT:
+							camera_x += FIXED_POINT / 16;
 							break;
 						case SDLK_DOWN:
+							camera_y += FIXED_POINT / 16;
 							break;
 						case SDLK_ESCAPE:
 							run = 0;

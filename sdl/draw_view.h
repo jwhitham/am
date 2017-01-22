@@ -9,5 +9,6 @@
 #define WINDOW_HEIGHT	(HALF_HEIGHT * 2)
 #define FIXED_POINT		(1 << FIXED_SHIFT)
 
-void draw_view (uint8_t * pixels, int16_t camera_x, int16_t camera_y, int16_t camera_angle);
+typedef int32_t fixed_t;
+void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, fixed_t camera_angle);
 
