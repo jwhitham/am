@@ -5,8 +5,6 @@
 
 #include "draw_view.h"
 
-#define UNDEFINED ((fixed_t) 0x7fffffff)
-
 void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, fixed_t camera_angle)
 {
 	fixed_t screen_x;
@@ -38,10 +36,10 @@ void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, fixed_t ca
 		&& (maze_y >= 0) && (maze_x >= 0)) {
 			fixed_t sub_x = viewer_x - ((fixed_t) maze_x * FIXED_POINT);
 			fixed_t sub_y = viewer_y - ((fixed_t) maze_y * FIXED_POINT);
-			fixed_t i1x = UNDEFINED;
-			fixed_t i1y = UNDEFINED;
-			fixed_t i2x = UNDEFINED;
-			fixed_t i2y = UNDEFINED;
+			fixed_t i1x = INT32_MAX;
+			fixed_t i1y = 0;
+			fixed_t i2x = INT32_MAX;
+			fixed_t i2y = 0;
 
 			assert (maze_x == (viewer_x / FIXED_POINT));
 			assert ((0 <= sub_x) && (sub_x <= FIXED_POINT));
@@ -64,7 +62,7 @@ void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, fixed_t ca
 				i2y = viewer_y + ((((FIXED_POINT - sub_x) * ray_vector_y) / ray_vector_x));
 			}
 
-			if ((i1x == UNDEFINED) || ((i2x < i1x) && (i2x != UNDEFINED))) {
+			if (i2x < i1x) {
 				// crosses vertical line first
 				maze_x ++;
 				viewer_x = i2x;
@@ -76,6 +74,7 @@ void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, fixed_t ca
 				// crosses horizontal line first
 				if (i2x == i1x) {
 					// special case: crosses both lines at once
+					assert (i1x != INT32_MAX);
 					i2y = i1y;
 					maze_x ++;
 				}
