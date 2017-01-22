@@ -39,6 +39,9 @@ int main (int argc, char ** argv)
 	int16_t				camera_angle = 0;
 	int16_t				move_x = 0;
 	int16_t				move_y = 0;
+	maze_t *			maze;
+	const uint16_t		rows = 4;
+	const uint16_t		columns = 11;
 
 
 	if (SDL_Init (SDL_INIT_TIMER | SDL_INIT_VIDEO) != 0) {
@@ -59,6 +62,15 @@ int main (int argc, char ** argv)
 	}
 	SDL_SetPalette (window, SDL_LOGPAL|SDL_PHYSPAL, colours, 0, 256);
 	SDL_AddTimer (0, tick, NULL);
+
+	maze = calloc (1, sizeof (maze_t) + (rows * columns));
+	assert (maze);
+	maze->rows = rows;
+	maze->columns = columns;
+	for (i = 0; i < maze->columns; i++) {
+		maze->maze[i] = i;
+		maze->maze[i + ((maze->rows - 1) * maze->columns)] = i;
+	}
 
 	do {
 		SDL_WaitEvent (&ev);
@@ -103,16 +115,16 @@ int main (int argc, char ** argv)
 				if (camera_y < 0) {
 					camera_y = 0;
 				}
-				if (camera_x > (FIXED_POINT * MAZE_COLUMNS)) {
-					camera_x = (FIXED_POINT * MAZE_COLUMNS);
+				if (camera_x > (FIXED_POINT * maze->columns)) {
+					camera_x = (FIXED_POINT * maze->columns);
 				}
-				if (camera_y > (FIXED_POINT * MAZE_ROWS)) {
-					camera_y = (FIXED_POINT * MAZE_ROWS);
+				if (camera_y > (FIXED_POINT * maze->rows)) {
+					camera_y = (FIXED_POINT * maze->rows);
 				}
 
 				SDL_LockSurface (window);
 				memset (window->pixels, 0, WINDOW_WIDTH * WINDOW_HEIGHT);
-				draw_view (window->pixels, camera_x, camera_y, camera_angle);
+				draw_view (window->pixels, camera_x, camera_y, camera_angle, maze);
 				SDL_UnlockSurface (window);
 				SDL_Flip (window);
 				break;

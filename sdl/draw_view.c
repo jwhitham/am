@@ -6,7 +6,7 @@
 
 #include "draw_view.h"
 
-void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, fixed_t camera_angle)
+void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, fixed_t camera_angle, maze_t * maze)
 {
 	fixed_t screen_x;
 
@@ -32,6 +32,7 @@ void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, fixed_t ca
 
 		fixed_t maze_x = (fixed_t) (viewer_x / FIXED_POINT);
 		fixed_t maze_y = (fixed_t) (viewer_y / FIXED_POINT);
+		uint16_t cell;
 
 		// begin casting
 		do {
@@ -94,38 +95,46 @@ void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, fixed_t ca
 				}
 			}
 
-			if ((maze_x < 0) || (maze_x >= MAZE_COLUMNS)
-			|| (maze_y < 0) || (maze_y >= MAZE_ROWS)
-			|| ((abs (maze_x - 5) <= 1) && (abs (maze_y - 5) <= 1) && (maze_x == maze_y))) {
-				// reached wall or edge of maze
-
-				fixed_t distance = viewer_x - camera_x;
-				fixed_t half_height = HALF_HEIGHT;
-				fixed_t start;
-				uint8_t * p;
-
-				if (distance > 0) {
-					half_height = ((FIXED_POINT * (HALF_HEIGHT - 1)) / distance);
-				}
-				if (half_height > HALF_HEIGHT) {
-					half_height = HALF_HEIGHT;
-				}
-				start = HALF_HEIGHT - half_height;
-
-				p = &pixels[screen_x + HALF_WIDTH + (start * HALF_WIDTH * 2)];
-				assert (p >= &pixels[0]);
-				assert (p < &pixels[HALF_WIDTH * HALF_HEIGHT * 4]);
-				while (half_height) {
-					p[0] = (texture_x & 63) + 120;
-					p += HALF_WIDTH * 2;
-					p[0] = 160;
-					p += HALF_WIDTH * 2;
-					half_height --;
-				}
-				break;
+			if ((maze_x >= 0) && (maze_y >= 0)
+			&& (maze_x < maze->columns) && (maze_y < maze->rows)) {
+				cell = maze->maze[maze_x + (maze_y * maze->columns)];
+			} else {
+				cell = 255;
 			}
-		} while (1);
+		} while (!cell);
 
+		// reached wall or edge of maze
+		{
+			fixed_t distance = viewer_x - camera_x;
+			fixed_t half_height = HALF_HEIGHT;
+			fixed_t start;
+			uint8_t * p;
+
+			if (distance > 0) {
+				half_height = ((FIXED_POINT * (HALF_HEIGHT - 1)) / distance);
+			}
+			if (half_height > HALF_HEIGHT) {
+				half_height = HALF_HEIGHT;
+			}
+			start = HALF_HEIGHT - half_height;
+
+			p = &pixels[screen_x + HALF_WIDTH + (start * HALF_WIDTH * 2)];
+			assert (p >= &pixels[0]);
+			assert (p < &pixels[HALF_WIDTH * HALF_HEIGHT * 4]);
+			cell *= 16;
+			cell += 64;
+			cell += ((texture_x % FIXED_POINT) * 64) / FIXED_POINT;
+			if (cell > 255) {
+				cell = 255;
+			}
+			while (half_height) {
+				p[0] = cell;
+				p += HALF_WIDTH * 2;
+				p[0] = cell;
+				p += HALF_WIDTH * 2;
+				half_height --;
+			}
+		}
 	}
 
 }
