@@ -97,11 +97,11 @@ int main (int argc, char ** argv)
 			case SDL_USEREVENT:
 				camera_x += move_x * (FIXED_POINT / 16);
 				camera_y += move_y * (FIXED_POINT / 16);
-				if (camera_x < FIXED_POINT) {
-					camera_x = FIXED_POINT;
+				if (camera_x < 0) {
+					camera_x = 0;
 				}
-				if (camera_y < FIXED_POINT) {
-					camera_y = FIXED_POINT;
+				if (camera_y < 0) {
+					camera_y = 0;
 				}
 				if (camera_x > (FIXED_POINT * MAZE_COLUMNS)) {
 					camera_x = (FIXED_POINT * MAZE_COLUMNS);

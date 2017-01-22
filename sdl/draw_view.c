@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <assert.h>
 #include <math.h>
+#include <stdlib.h>
 
 #include "draw_view.h"
 
@@ -32,8 +33,8 @@ void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, fixed_t ca
 		fixed_t maze_x = (fixed_t) (viewer_x / FIXED_POINT);
 		fixed_t maze_y = (fixed_t) (viewer_y / FIXED_POINT);
 
-		while ((maze_x < MAZE_COLUMNS) && (maze_y < MAZE_ROWS)
-		&& (maze_y >= 0) && (maze_x >= 0)) {
+		// begin casting
+		do {
 			fixed_t sub_x = viewer_x - ((fixed_t) maze_x * FIXED_POINT);
 			fixed_t sub_y = viewer_y - ((fixed_t) maze_y * FIXED_POINT);
 			fixed_t i1x = INT32_MAX;
@@ -93,10 +94,10 @@ void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, fixed_t ca
 				}
 			}
 
-			if ((maze_x == 0) || (maze_x == (MAZE_COLUMNS - 1))
-			|| (maze_y == 0) || (maze_y == (MAZE_ROWS - 1))
-			|| (maze_x == (MAZE_ROWS - maze_y))) {
-				// reached wall
+			if ((maze_x < 0) || (maze_x >= MAZE_COLUMNS)
+			|| (maze_y < 0) || (maze_y >= MAZE_ROWS)
+			|| ((abs (maze_x - 5) <= 1) && (abs (maze_y - 5) <= 1) && (maze_x == maze_y))) {
+				// reached wall or edge of maze
 
 				fixed_t distance = viewer_x - camera_x;
 				fixed_t half_height = HALF_HEIGHT;
@@ -123,7 +124,8 @@ void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, fixed_t ca
 				}
 				break;
 			}
-		}
+		} while (1);
+
 	}
 
 }
