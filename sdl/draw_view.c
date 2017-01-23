@@ -50,22 +50,36 @@ void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, fixed_t ca
 
 			// find first intersection with horizontal line
 			if (ray_vector_y < 0) {
-				// above (left hand side)
+				// north side
 				i1x = viewer_x + (((ray_vector_x * sub_y) / (- ray_vector_y)));
 				i1y = (fixed_t) maze_y * FIXED_POINT;
 			} else if (ray_vector_y > 0) {
-				// below (right hand side)
+				// south side
 				i1x = viewer_x + (((ray_vector_x * (FIXED_POINT - sub_y)) / (ray_vector_y)));
 				i1y = (fixed_t) (maze_y + 1) * FIXED_POINT;
+			} else if (ray_vector_x > 0) {
+				// not defined (east side)
+				i1x = i1y = INT32_MAX;
+			} else {
+				// not defined (west side)
+				i1x = i1y = INT32_MIN;
 			}
 
 			// find first intersection with vertical line
 			if (ray_vector_x < 0) {
+				// west side
 				i2x = (fixed_t) maze_x * FIXED_POINT;
 				i2y = viewer_y + ((sub_x * ray_vector_y) / (- ray_vector_x));
 			} else if (ray_vector_x > 0) {
+				// east side
 				i2x = (fixed_t) (maze_x + 1) * FIXED_POINT;
 				i2y = viewer_y + ((((FIXED_POINT - sub_x) * ray_vector_y) / ray_vector_x));
+			} else if (ray_vector_y > 0) {
+				// not defined (south side)
+				i2x = i2y = INT32_MAX;
+			} else {
+				// not defined (north side)
+				i2x = i2y = INT32_MIN;
 			}
 
 			// Which is nearest? i1 or i2?
@@ -91,26 +105,33 @@ void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, fixed_t ca
 				viewer_x = i2x;
 				viewer_y = i2y;
 				maze_x = viewer_x / FIXED_POINT;
+				maze_y = viewer_y / FIXED_POINT;
 				if (ray_vector_x < 0) {
+					// cross on west side
 					maze_x --;
+					texture_x = i2y;
+				} else {
+					// cross on east side
+					texture_x = - i2y;
 				}
-				texture_x = i2y;
 			} else {
 				// crosses horizontal line first
-				if (i2x == i1x) {
-					// special case: crosses both lines at once
-					assert (i1x != INT32_MAX);
-					i2y = i1y;
-					maze_x ++;
-				}
+				// (or both lines at once)
 				viewer_x = i1x;
 				viewer_y = i1y;
+				maze_x = viewer_x / FIXED_POINT;
 				maze_y = viewer_y / FIXED_POINT;
 				if (ray_vector_y < 0) {
+					// cross on north side
 					maze_y --;
-					texture_x = i2x;
+					texture_x = i1x;
 				} else {
+					// cross on south side
 					texture_x = - i1x;
+				}
+				if ((i2x == i1x) && (ray_vector_x < 0)) {
+					// also cross on west side
+					maze_x --;
 				}
 			}
 
