@@ -42,6 +42,7 @@ void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, fixed_t ca
 			fixed_t i1y = 0;
 			fixed_t i2x = INT32_MAX;
 			fixed_t i2y = 0;
+			int i2_is_nearer = 0;
 
 			assert (maze_x == (viewer_x / FIXED_POINT));
 			assert ((0 <= sub_x) && (sub_x <= FIXED_POINT));
@@ -59,18 +60,40 @@ void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, fixed_t ca
 			}
 
 			// find first intersection with vertical line
-			if (ray_vector_x > 0) {
+			if (ray_vector_x < 0) {
+				i2x = (fixed_t) maze_x * FIXED_POINT;
+				i2y = viewer_y + ((sub_x * ray_vector_y) / (- ray_vector_x));
+			} else if (ray_vector_x > 0) {
 				i2x = (fixed_t) (maze_x + 1) * FIXED_POINT;
 				i2y = viewer_y + ((((FIXED_POINT - sub_x) * ray_vector_y) / ray_vector_x));
 			}
 
-			if (i2x < i1x) {
+			// Which is nearest? i1 or i2?
+			// Divide a circle into quarters, with lines at 45, 135, 225, 315 degrees
+			if (abs (ray_vector_y) < abs (ray_vector_x)) {
+				if (ray_vector_x > 0) {
+					// East quarter
+					i2_is_nearer = (i2x < i1x);
+				} else {
+					// West quarter
+					i2_is_nearer = (i2x > i1x);
+				}
+			} else if (ray_vector_y > 0) {
+				// South quarter
+				i2_is_nearer = (i2y < i1y);
+			} else {
+				// North quarter
+				i2_is_nearer = (i2y > i1y);
+			}
+
+			if (i2_is_nearer) {
 				// crosses vertical line first
-				maze_x ++;
 				viewer_x = i2x;
 				viewer_y = i2y;
-				assert (maze_x == (viewer_x / FIXED_POINT));
-
+				maze_x = viewer_x / FIXED_POINT;
+				if (ray_vector_x < 0) {
+					maze_x --;
+				}
 				texture_x = i2y;
 			} else {
 				// crosses horizontal line first
@@ -80,17 +103,13 @@ void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, fixed_t ca
 					i2y = i1y;
 					maze_x ++;
 				}
-
 				viewer_x = i1x;
 				viewer_y = i1y;
-				assert (maze_x == (viewer_x / FIXED_POINT));
+				maze_y = viewer_y / FIXED_POINT;
 				if (ray_vector_y < 0) {
-					assert (maze_y == (viewer_y / FIXED_POINT));
 					maze_y --;
-					texture_x = i1x;
+					texture_x = i2x;
 				} else {
-					maze_y ++;
-					assert (maze_y == (viewer_y / FIXED_POINT));
 					texture_x = - i1x;
 				}
 			}

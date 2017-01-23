@@ -40,7 +40,7 @@ int main (int argc, char ** argv)
 	int16_t				move_x = 0;
 	int16_t				move_y = 0;
 	maze_t *			maze;
-	const uint16_t		rows = 4;
+	const uint16_t		rows = 5;
 	const uint16_t		columns = 11;
 
 
@@ -68,8 +68,12 @@ int main (int argc, char ** argv)
 	maze->rows = rows;
 	maze->columns = columns;
 	for (i = 0; i < maze->columns; i++) {
-		maze->maze[i] = i;
 		maze->maze[i + ((maze->rows - 1) * maze->columns)] = i;
+	}
+	for (i = 0; i < maze->columns; i++) {
+		maze->maze[i] = i;
+		i++;
+		maze->maze[i + ((maze->rows - 2) * maze->columns)] = i;
 	}
 
 	do {
