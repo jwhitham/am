@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <assert.h>
+#include <math.h>
 #include <SDL/SDL.h>
 
 #include "draw_view.h"
@@ -36,9 +37,9 @@ int main (int argc, char ** argv)
 	SDL_Color			colours[256];
 	int16_t				camera_x = 1 + FIXED_POINT * 2;
 	int16_t				camera_y = 1 + FIXED_POINT * 2;
-	int16_t				camera_angle = 0;
-	int16_t				move_x = 0;
-	int16_t				move_y = 0;
+	float				camera_angle = 0.0;
+	int16_t				move = 0;
+	int16_t				rotate = 0;
 	maze_t *			maze;
 	const uint16_t		rows = 5;
 	const uint16_t		columns = 11;
@@ -89,16 +90,16 @@ int main (int argc, char ** argv)
 			case SDL_KEYUP:
 				switch (ev.key.keysym.sym) {
 					case SDLK_LEFT:
-						move_x = (ev.type == SDL_KEYDOWN) ? -1 : 0;
+						rotate = (ev.type == SDL_KEYDOWN) ? -1 : 0;
 						break;
 					case SDLK_UP:
-						move_y = (ev.type == SDL_KEYDOWN) ? -1 : 0;
+						move = (ev.type == SDL_KEYDOWN) ? 1 : 0;
 						break;
 					case SDLK_RIGHT:
-						move_x = (ev.type == SDL_KEYDOWN) ? 1 : 0;
+						rotate = (ev.type == SDL_KEYDOWN) ? 1 : 0;
 						break;
 					case SDLK_DOWN:
-						move_y = (ev.type == SDL_KEYDOWN) ? 1 : 0;
+						move = (ev.type == SDL_KEYDOWN) ? -1 : 0;
 						break;
 					case SDLK_ESCAPE:
 						run = 0;
@@ -111,8 +112,9 @@ int main (int argc, char ** argv)
 				run = 0;
 				break;
 			case SDL_USEREVENT:
-				camera_x += move_x * (FIXED_POINT / 16);
-				camera_y += move_y * (FIXED_POINT / 16);
+				camera_angle += 0.05 * rotate;
+				camera_x += move * floorf (FIXED_POINT * cosf (camera_angle) / 16);
+				camera_y += move * floorf (FIXED_POINT * sinf (camera_angle) / 16);
 				if (camera_x < 0) {
 					camera_x = 0;
 				}

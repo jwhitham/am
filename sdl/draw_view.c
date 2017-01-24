@@ -6,16 +6,13 @@
 
 #include "draw_view.h"
 
-void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, fixed_t camera_angle, maze_t * maze)
+void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, float camera_angle, maze_t * maze)
 {
 	fixed_t screen_x;
 
-	// convert integer angle to radians.
-	float angle = ((float) camera_angle) * M_PI * 2.0 / 65536.0;
-
 	// ray cast from the centre of the screen
-	fixed_t camera_vector_x = (fixed_t) floorf (FIXED_POINT * cosf (angle));
-	fixed_t camera_vector_y = (fixed_t) floorf (FIXED_POINT * sinf (angle));
+	fixed_t camera_vector_x = (fixed_t) floorf (FIXED_POINT * cosf (camera_angle));
+	fixed_t camera_vector_y = (fixed_t) floorf (FIXED_POINT * sinf (camera_angle));
 
 	// normal to the camera vector (projection plane for view)
 	fixed_t plane_vector_x = -camera_vector_y;
