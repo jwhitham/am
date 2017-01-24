@@ -6,6 +6,27 @@
 
 #include "draw_view.h"
 
+
+static fixed_t fisheye_correction[HALF_WIDTH * 2];
+
+
+void draw_init (void)
+{
+	fixed_t screen_x;
+
+	for (screen_x = -HALF_WIDTH; screen_x < HALF_WIDTH; screen_x++) {
+		fixed_t ray_vector_x = FIXED_POINT;
+		fixed_t ray_vector_y = ((FIXED_POINT * screen_x) / HALF_WIDTH);
+		fixed_t total = (ray_vector_x * ray_vector_x) + (ray_vector_y * ray_vector_y);
+		fixed_t distance = FIXED_POINT;
+		int i;
+		for (i = 0; i < 16; i++) {
+			distance = (distance + (total / distance)) / 2;
+		}
+		fisheye_correction[screen_x + HALF_WIDTH] = distance;
+	}
+}
+
 void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, float camera_angle, maze_t * maze)
 {
 	fixed_t screen_x;
@@ -41,7 +62,6 @@ void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, float came
 			fixed_t i2y = 0;
 			int i2_is_nearer = 0;
 
-			assert (maze_x == (viewer_x / FIXED_POINT));
 			assert ((0 <= sub_x) && (sub_x <= FIXED_POINT));
 			assert ((0 <= sub_y) && (sub_y <= FIXED_POINT));
 
@@ -142,13 +162,24 @@ void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, float came
 
 		// reached wall or edge of maze
 		{
-			fixed_t distance = viewer_x - camera_x;
+			fixed_t distance;
 			fixed_t half_height = HALF_HEIGHT;
-			fixed_t start;
+			fixed_t start, dx, dy, total;
+			int i;
 			uint8_t * p;
 
+			dx = (viewer_x - camera_x);
+			dy = (viewer_y - camera_y);
+			total = (dx * dx) + (dy * dy);
+
+			// approximation for square root - more iterations improve accuracy
+			distance = FIXED_POINT;
+			for (i = 0; i < 4; i++) {
+				distance = (distance + (total / distance)) / 2;
+			}
+
 			if (distance > 0) {
-				half_height = ((FIXED_POINT * (HALF_HEIGHT - 1)) / distance);
+				half_height = ((fisheye_correction[screen_x + HALF_WIDTH] * (HALF_HEIGHT - 1)) / distance);
 			}
 			if (half_height > HALF_HEIGHT) {
 				half_height = HALF_HEIGHT;

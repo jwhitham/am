@@ -6,6 +6,7 @@
 #define WINDOW_WIDTH	(HALF_WIDTH * 2)
 #define WINDOW_HEIGHT	(HALF_HEIGHT * 2)
 #define FIXED_POINT		(1 << FIXED_SHIFT)
+#define HALF_FIXED_POINT (FIXED_POINT >> 1)
 
 typedef int32_t fixed_t;
 
@@ -15,5 +16,6 @@ typedef struct maze_s {
 } maze_t;
 
 
+void draw_init (void);
 void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, float camera_angle, maze_t * maze);
 

@@ -45,6 +45,7 @@ int main (int argc, char ** argv)
 	const uint16_t		columns = 11;
 
 
+	draw_init ();
 	if (SDL_Init (SDL_INIT_TIMER | SDL_INIT_VIDEO) != 0) {
 		fprintf (stderr, "SDL_Init failed.\n");
 		return 1;
@@ -112,7 +113,7 @@ int main (int argc, char ** argv)
 				run = 0;
 				break;
 			case SDL_USEREVENT:
-				camera_angle += 0.05 * rotate;
+				camera_angle += 0.02 * rotate;
 				camera_x += move * floorf (FIXED_POINT * cosf (camera_angle) / 16);
 				camera_y += move * floorf (FIXED_POINT * sinf (camera_angle) / 16);
 				if (camera_x < 0) {
