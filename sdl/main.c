@@ -37,11 +37,12 @@ int main (int argc, char ** argv)
 	SDL_Color			colours[256];
 	int16_t				camera_x = 1 + FIXED_POINT * 2;
 	int16_t				camera_y = 1 + FIXED_POINT * 2;
+	int16_t				undo_x, undo_y;
 	float				camera_angle = 0.0;
 	int16_t				move = 0;
 	int16_t				rotate = 0;
 	maze_t *			maze;
-	const uint16_t		rows = 5;
+	const uint16_t		rows = 7;
 	const uint16_t		columns = 11;
 
 
@@ -114,6 +115,8 @@ int main (int argc, char ** argv)
 				break;
 			case SDL_USEREVENT:
 				camera_angle += 0.02 * rotate;
+				undo_x = camera_x;
+				undo_y = camera_y;
 				camera_x += move * floorf (FIXED_POINT * cosf (camera_angle) / 16);
 				camera_y += move * floorf (FIXED_POINT * sinf (camera_angle) / 16);
 				if (camera_x < 0) {
@@ -127,6 +130,11 @@ int main (int argc, char ** argv)
 				}
 				if (camera_y > (FIXED_POINT * maze->rows)) {
 					camera_y = (FIXED_POINT * maze->rows);
+				}
+				if (maze->maze[(camera_x / FIXED_POINT) + ((camera_y / FIXED_POINT) * maze->columns)]) {
+					// Ouch. You bump into a wall.
+					camera_x = undo_x;
+					camera_y = undo_y;
 				}
 
 				SDL_LockSurface (window);

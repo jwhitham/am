@@ -23,7 +23,7 @@ void draw_init (void)
 		for (i = 0; i < 16; i++) {
 			distance = (distance + (total / distance)) / 2;
 		}
-		fisheye_correction[screen_x + HALF_WIDTH] = distance;
+		fisheye_correction[screen_x + HALF_WIDTH] = distance * (HALF_HEIGHT - 1);
 	}
 }
 
@@ -146,9 +146,12 @@ void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, float came
 					// cross on south side
 					texture_x = - i1x;
 				}
-				if ((i2x == i1x) && (ray_vector_x < 0)) {
-					// also cross on west side
-					maze_x --;
+				if (viewer_x == (maze_x * FIXED_POINT)) {
+					// also crosses vertical line
+					if (ray_vector_x < 0) {
+						// cross on west side
+						maze_x --;
+					}
 				}
 			}
 
@@ -172,14 +175,26 @@ void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, float came
 			dy = (viewer_y - camera_y);
 			total = (dx * dx) + (dy * dy);
 
-			// approximation for square root - more iterations improve accuracy
-			distance = FIXED_POINT;
-			for (i = 0; i < 4; i++) {
-				distance = (distance + (total / distance)) / 2;
-			}
-
+			// Distance estimate (Manhattan)
+			distance = abs (dx) + abs (dy);
 			if (distance > 0) {
-				half_height = ((fisheye_correction[screen_x + HALF_WIDTH] * (HALF_HEIGHT - 1)) / distance);
+//				float er;
+//				static float max_e = 0;
+				// approximation for square root - more iterations improve accuracy
+				// Starting from the Manhattan distance
+				// two iterations seems to be enough to get within +/- 4
+				// three iterations seems to be enough to get within +/- 1
+				for (i = 0; i < 3; i++) {
+					distance = (distance + (total / distance)) / 2;
+				}
+//				er = fabsf (sqrtf (total) - (float) distance);
+//				if (er > max_e) {
+//					printf ("max error %1.3f with total %d\n", er, total);
+//					max_e = er;
+//				}
+			}
+			if (distance > 0) {
+				half_height = fisheye_correction[screen_x + HALF_WIDTH] / distance;
 			}
 			if (half_height > HALF_HEIGHT) {
 				half_height = HALF_HEIGHT;
