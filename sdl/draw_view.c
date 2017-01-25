@@ -27,7 +27,7 @@ void draw_init (void)
 	}
 }
 
-void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, float camera_angle, maze_t * maze)
+void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, float camera_angle, maze_t * maze, texture_t * texture)
 {
 	fixed_t screen_x;
 
@@ -168,8 +168,11 @@ void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, float came
 			fixed_t distance;
 			fixed_t half_height = HALF_HEIGHT;
 			fixed_t start, dx, dy, total;
+			fixed_t pos, step, height;
 			int i;
+			uint16_t size_log2 = texture->size_log2;
 			uint8_t * p;
+			uint8_t * t;
 
 			dx = (viewer_x - camera_x);
 			dy = (viewer_y - camera_y);
@@ -195,27 +198,33 @@ void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, float came
 			}
 			if (distance > 0) {
 				half_height = fisheye_correction[screen_x + HALF_WIDTH] / distance;
-			}
-			if (half_height > HALF_HEIGHT) {
-				half_height = HALF_HEIGHT;
-			}
-			start = HALF_HEIGHT - half_height;
 
-			p = &pixels[screen_x + HALF_WIDTH + (start * HALF_WIDTH * 2)];
-			assert (p >= &pixels[0]);
-			assert (p < &pixels[HALF_WIDTH * HALF_HEIGHT * 4]);
-			cell *= 16;
-			cell += 64;
-			cell += ((texture_x % FIXED_POINT) * 64) / FIXED_POINT;
-			if (cell > 255) {
-				cell = 255;
-			}
-			while (half_height) {
-				p[0] = cell;
-				p += HALF_WIDTH * 2;
-				p[0] = cell;
-				p += HALF_WIDTH * 2;
-				half_height --;
+				texture_x = (texture_x & (FIXED_POINT - 1)) >> (FIXED_SHIFT - size_log2);
+				t = &texture->pixels[texture_x << size_log2];
+
+				height = half_height * 2;
+
+				// Render size_log2 input pixels into height output pixels
+				pos = 0;
+				step = (1 << (TEXTURE_FIXED_SHIFT + size_log2)) / height;
+
+				// Find starting position
+				start = HALF_HEIGHT - half_height;
+				if (start < 0) {
+					// Offset into texture
+					pos = (- start) * step;
+					height = HALF_HEIGHT * 2;
+					start = 0;
+				}
+				p = &pixels[screen_x + HALF_WIDTH + (start * HALF_WIDTH * 2)];
+				assert (p >= &pixels[0]);
+				assert (p < &pixels[HALF_WIDTH * HALF_HEIGHT * 4]);
+
+				for (i = 0; i < height; i++) {
+					p[0] = t[pos >> TEXTURE_FIXED_SHIFT];
+					p += HALF_WIDTH * 2;
+					pos += step;
+				}
 			}
 		}
 	}

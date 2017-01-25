@@ -42,8 +42,10 @@ int main (int argc, char ** argv)
 	int16_t				move = 0;
 	int16_t				rotate = 0;
 	maze_t *			maze;
+	texture_t *			texture;
 	const uint16_t		rows = 7;
 	const uint16_t		columns = 11;
+	const uint16_t		size_log2 = 6;
 
 
 	draw_init ();
@@ -77,6 +79,20 @@ int main (int argc, char ** argv)
 		maze->maze[i] = i;
 		i++;
 		maze->maze[i + ((maze->rows - 2) * maze->columns)] = i;
+	}
+	texture = calloc (1, sizeof (texture_t) + (1 << (size_log2 * 2)));
+	assert (texture);
+	texture->size_log2 = size_log2;
+	for (i = 0; i < (1 << (size_log2 * 2)); i++) {
+		uint16_t x = i >> size_log2;
+		uint16_t y = i & ((1 << size_log2) - 1);
+
+		if (((x & 7) == 0) || ((y & 7) == 0)) {
+			texture->pixels[i] = 0xff;
+		}
+		if ((x == ((1 << size_log2) - 1)) || (y == ((1 << size_log2) - 1))) {
+			texture->pixels[i] = 0xff;
+		}
 	}
 
 	do {
@@ -139,7 +155,7 @@ int main (int argc, char ** argv)
 
 				SDL_LockSurface (window);
 				memset (window->pixels, 0, WINDOW_WIDTH * WINDOW_HEIGHT);
-				draw_view (window->pixels, camera_x, camera_y, camera_angle, maze);
+				draw_view (window->pixels, camera_x, camera_y, camera_angle, maze, texture);
 				SDL_UnlockSurface (window);
 				SDL_Flip (window);
 				break;
