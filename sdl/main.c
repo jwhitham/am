@@ -45,10 +45,11 @@ int main (int argc, char ** argv)
 	int16_t				sidestep = 0;
 	maze_t *			maze;
 	texture_t *			texture;
-	const uint16_t		rows = 7;
-	const uint16_t		columns = 11;
+	const uint16_t		rows = 15;
+	const uint16_t		columns = 15;
 	const uint16_t		size_log2 = 6;
 
+#define set_maze(x,y,z) maze->maze[(x) + ((y) * maze->columns)] = (z)
 
 	draw_init ();
 	if (SDL_Init (SDL_INIT_TIMER | SDL_INIT_VIDEO) != 0) {
@@ -79,16 +80,14 @@ int main (int argc, char ** argv)
 	assert (maze);
 	maze->rows = rows;
 	maze->columns = columns;
-	for (i = 0; i < maze->columns; i++) {
-		maze->maze[i + ((maze->rows - 1) * maze->columns)] = i;
+	for (i = 0; i < maze->columns; i += 2) {
+		set_maze (i, 0, 0x01); 
+		set_maze (i, maze->rows - 1, 0x01); 
 	}
-	for (i = 0; i < maze->columns; i++) {
-		maze->maze[i] = i;
-		i++;
-		maze->maze[i + ((maze->rows - 2) * maze->columns)] = i;
-	}
-	maze->maze[2] = 0x33;
-	maze->maze[6 + ((maze->rows - 3) * maze->columns)] = 0x33;
+	set_maze (5, 5, 0x31); 
+	set_maze (7, 5, 0x30); 
+	set_maze (5, 7, 0x33); 
+	set_maze (7, 7, 0x30); 
 
 	texture = calloc (1, sizeof (texture_t) + (1 << (size_log2 * 2)));
 	assert (texture);

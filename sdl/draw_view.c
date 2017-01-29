@@ -198,7 +198,7 @@ void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, float came
 				case 0:
 					goto cast_again;
 				case 0x33:
-					// Possible intersection with edge of triangle
+					// Possible intersection with edge of triangle occupying northeast corner of cell
 					if (wall == 'e' || wall == 'n') {
 						goto reached_wall;
 					}
@@ -206,12 +206,32 @@ void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, float came
 					sub_y = viewer_y - ((fixed_t) maze_y * FIXED_POINT);
 					// line runs from 0,0 to 1,1 forming a triangle
 					if (ray_vector_x != ray_vector_y) {
-						// viewed from west side
 						// intersects at sub_x == sub_y
 						fixed_t i = (((ray_vector_x * sub_y) - (ray_vector_y * sub_x)) / (ray_vector_x - ray_vector_y));
 						if (((unsigned) i) < FIXED_POINT) {
 							viewer_x = (maze_x * FIXED_POINT) + i;
 							viewer_y = (maze_y * FIXED_POINT) + i;
+							texture_x = viewer_x;
+							goto reached_wall;
+						}
+					}
+					goto cast_again;
+				case 0x31:
+					// Possible intersection with edge of triangle occupying southeast corner of cell
+					// TODO does not work when viewed from the north, equation is wrong
+					if (wall == 'e' || wall == 's') {
+						goto reached_wall;
+					}
+					sub_x = viewer_x - ((fixed_t) maze_x * FIXED_POINT);
+					sub_y = viewer_y - ((fixed_t) maze_y * FIXED_POINT);
+					// line runs from 0,1 to 1,0 forming a triangle
+					if (ray_vector_y != -FIXED_POINT) {
+						// viewed from west side
+						// intersects at sub_x == (FIXED_POINT - sub_y)
+						fixed_t i = (ray_vector_x * (FIXED_POINT - sub_y - sub_x)) / (FIXED_POINT + ray_vector_y);
+						if (((unsigned) i) < FIXED_POINT) {
+							viewer_x = (maze_x * FIXED_POINT) + i;
+							viewer_y = ((maze_y + 1) * FIXED_POINT) - i;
 							texture_x = viewer_x;
 							goto reached_wall;
 						}
