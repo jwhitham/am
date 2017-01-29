@@ -22,5 +22,5 @@ typedef struct texture_s {
 } texture_t;
 
 void draw_init (void);
-void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, float camera_angle, maze_t * maze, texture_t * texture);
+void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, float camera_angle, maze_t * maze, texture_t * texture, int map);
 
