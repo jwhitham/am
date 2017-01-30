@@ -197,14 +197,21 @@ void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, float came
 			switch (cell) {
 				case 0:
 					goto cast_again;
+				case 0x32:
+					// Possible intersection with edge of triangle occupying southwest corner of cell
+					if (wall == 'w' || wall == 's') {
+						goto reached_wall;
+					}
+					goto triangle_1;
 				case 0x33:
 					// Possible intersection with edge of triangle occupying northeast corner of cell
 					if (wall == 'e' || wall == 'n') {
 						goto reached_wall;
 					}
+				triangle_1:
+					// line runs from 0,0 to 1,1 forming a triangle
 					sub_x = viewer_x - ((fixed_t) maze_x * FIXED_POINT);
 					sub_y = viewer_y - ((fixed_t) maze_y * FIXED_POINT);
-					// line runs from 0,0 to 1,1 forming a triangle
 					if (ray_vector_x != ray_vector_y) {
 						// intersects at sub_x == sub_y
 						fixed_t i = (((ray_vector_x * sub_y) - (ray_vector_y * sub_x)) / (ray_vector_x - ray_vector_y));
@@ -221,11 +228,17 @@ void draw_view (uint8_t * pixels, fixed_t camera_x, fixed_t camera_y, float came
 					if (wall == 'e' || wall == 's') {
 						goto reached_wall;
 					}
+					goto triangle_2;
+				case 0x34:
+					// Possible intersection with edge of triangle occupying northwest corner of cell
+					if (wall == 'w' || wall == 'n') {
+						goto reached_wall;
+					}
+				triangle_2:
+					// line runs from 0,1 to 1,0 forming a triangle
 					sub_x = viewer_x - ((fixed_t) maze_x * FIXED_POINT);
 					sub_y = viewer_y - ((fixed_t) maze_y * FIXED_POINT);
-					// line runs from 0,1 to 1,0 forming a triangle
 					if ((ray_vector_y + ray_vector_x) != 0) {
-						// viewed from west side
 						// intersects at sub_x == (FIXED_POINT - 1 - sub_y)
 						fixed_t i = sub_x + (ray_vector_x * (FIXED_POINT - 1 - sub_y - sub_x)) / (ray_vector_x + ray_vector_y);
 						if (((unsigned) i) < FIXED_POINT) {

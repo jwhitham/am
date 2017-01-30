@@ -85,9 +85,19 @@ int main (int argc, char ** argv)
 		set_maze (i, maze->rows - 1, 0x01); 
 	}
 	set_maze (5, 5, 0x31); 
-	set_maze (7, 5, 0x30); 
+	set_maze (7, 5, 0x32); 
 	set_maze (5, 7, 0x33); 
-	set_maze (7, 7, 0x30); 
+	set_maze (7, 7, 0x34); 
+
+	set_maze (10, 10, 0x31); 
+	set_maze (11, 10, 0x32); 
+	set_maze (10, 11, 0x33); 
+	set_maze (11, 11, 0x34); 
+
+	set_maze (4, 11, 0x31); 
+	set_maze (5, 11, 0x32); 
+	set_maze (4, 10, 0x33); 
+	set_maze (5, 10, 0x34); 
 
 	texture = calloc (1, sizeof (texture_t) + (1 << (size_log2 * 2)));
 	assert (texture);
